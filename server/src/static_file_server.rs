@@ -19,11 +19,14 @@ async fn test(req: Request<body::Incoming>) -> hyper::Result<Response<Full<Bytes
   Ok(Response::new(Full::new("Hello".into())))
 }
 
-pub async fn run_file_server(prod: bool) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub async fn run_file_server(
+  prod: bool,
+  port: u16,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
   let service = service_fn(test);
   if prod {
-    run_https_service(service).await
+    run_https_service(service, port).await
   } else {
-    run_http_service(service).await
+    run_http_service(service, port).await
   }
 }

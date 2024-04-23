@@ -10,7 +10,7 @@ mod util;
 #[command(version, about, long_about = None)]
 struct Args {
   #[arg(long, default_value_t = 3000)]
-  port: u32,
+  port: u16,
 
   #[arg(long, default_value_t = false)]
   prod: bool,
@@ -20,5 +20,5 @@ struct Args {
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
   let args = Args::parse();
 
-  run_file_server(args.prod).await
+  run_file_server(args.prod, args.port).await
 }

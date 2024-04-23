@@ -20,6 +20,7 @@ use crate::util::mk_error;
 
 pub async fn run_https_service<S, B>(
   service: S,
+  port: u16,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>>
 where
   S: Service<Request<Incoming>, Response = Response<B>> + Copy + Send + 'static,
@@ -31,7 +32,7 @@ where
 {
   let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
 
-  let addr = SocketAddr::new([10, 0, 0, 181].into(), 3000);
+  let addr = SocketAddr::new([10, 0, 0, 181].into(), port);
 
   let certs = load_certs("/etc/letsencrypt/live/cknittel.com/cert.pem")?;
   let key = load_private_key("/etc/letsencrypt/live/cknittel.com/privkey.pem")?;
