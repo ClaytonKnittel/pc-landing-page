@@ -13,4 +13,5 @@ hyper-util = { version = "0.1", features = ["full"] }
 rustls = "0.23.5"
 tokio-rustls = "0.26.0"
 rustls-pemfile = "2.1.2"
+clap = { version = "4.5.4", features = ["derive"] }
 
