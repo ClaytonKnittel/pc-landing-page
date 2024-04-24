@@ -1,8 +1,8 @@
-import React from "react";
+import React from 'react';
 
 // import { AsyncSocketContext } from "client/util/async_sockets";
 // import { isOk } from "client/util/status";
-// import { Test } from "proto/game_state";
+// import { Test } from "proto/test";
 
 // const socket: OnoroSocket = new AsyncSocketContext(
 //   "ws://[::]:2345/onoro",
@@ -10,5 +10,5 @@ import React from "react";
 // );
 
 export function App() {
-  return <div>Hello there.</div>;
+  return <div>Hello Remy.</div>;
 }

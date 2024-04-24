@@ -5,8 +5,8 @@ import { Helmet } from 'react-helmet';
 import { App } from 'client/App';
 import 'client/styles/global_styles.css';
 
-const APP_TITLE = 'Onoro';
-const APP_DESCRIPTION = 'Onoro web client';
+const APP_TITLE = 'Landing Page';
+const APP_DESCRIPTION = 'PC Landing Page';
 
 const root = createRoot(document.getElementById('root') as HTMLElement);
 
