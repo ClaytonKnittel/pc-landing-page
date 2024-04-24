@@ -39,7 +39,11 @@ fn not_found() -> Response<BoxBody<Bytes, io::Error>> {
 }
 
 async fn respond_file_contents(uri: &str) -> hyper::Result<Response<BoxBody<Bytes, io::Error>>> {
+  let uri = uri.strip_prefix('/').unwrap_or(uri);
   let full_path = client_static_path().join(uri);
+  if !full_path.starts_with(client_static_path()) {
+    return Ok(not_found());
+  }
 
   if let Ok(file) = File::open(full_path).await {
     let reader_stream = ReaderStream::new(file);
