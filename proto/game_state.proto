@@ -1,7 +1,0 @@
-syntax = "proto2";
-
-package onoro.proto;
-
-message Test {
-  optional string name = 1;
-}
