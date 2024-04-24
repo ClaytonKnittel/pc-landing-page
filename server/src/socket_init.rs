@@ -7,6 +7,8 @@ use async_sockets::{
 use serde::Deserialize;
 use tokio::task::JoinHandle;
 
+use crate::mc_server::mc_server_status;
+
 #[derive(AsyncSocketEmitters)]
 enum ServerEmitEvents {}
 
@@ -35,16 +37,11 @@ async fn handle_call_event(
   event: FromClientRequests,
   _context: AsyncSocketContext<ServerEmitEvents>,
 ) -> Status<ToClientResponses> {
-  static mut CNT: u64 = 0;
   match event {
-    FromClientRequests::McServerStatus {} => {
-      unsafe {
-        CNT += 1;
-      }
-      Status::Ok(ToClientResponses::McServerStatus {
-        on: unsafe { CNT } % 2 == 0,
-      })
-    }
+    FromClientRequests::McServerStatus {} => match mc_server_status() {
+      Ok(unit) => Status::Ok(ToClientResponses::McServerStatus { on: unit.active }),
+      Err(_) => Status::InternalServerError("Failed to read MC server status".into()),
+    },
   }
 }
 
@@ -55,12 +52,12 @@ async fn handle_emit_event(
   match event {}
 }
 
-pub fn create_socket_endpoint() -> JoinHandle<()> {
-  tokio::spawn(async {
+pub fn create_socket_endpoint(prod: bool, port: u16) -> JoinHandle<()> {
+  tokio::spawn(async move {
     AsyncSocket::new(
       AsyncSocketOptions::new()
         .with_path("horsney")
-        .with_port(2345)
+        .with_port(port)
         .with_timeout(Duration::from_secs(10))
         .with_verbose(false),
       handle_connect_event,

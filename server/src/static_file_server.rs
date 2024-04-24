@@ -13,6 +13,7 @@ use tokio_util::io::ReaderStream;
 use crate::{http::run_http_service, https::run_https_service};
 
 const DIR: &str = "../client/dist/dev/static";
+const INDEX: &str = "/index.html";
 
 fn client_static_path() -> PathBuf {
   fs::canonicalize(DIR).unwrap()
@@ -22,6 +23,7 @@ async fn service(
   req: Request<body::Incoming>,
 ) -> hyper::Result<Response<BoxBody<Bytes, io::Error>>> {
   match (req.method(), req.uri().path()) {
+    (&Method::GET, "/") => respond_file_contents(INDEX).await,
     (&Method::GET, uri) => respond_file_contents(uri).await,
     _ => Ok(not_found()),
   }

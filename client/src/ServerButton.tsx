@@ -9,21 +9,21 @@ const socket: ServerSocket = new AsyncSocketContext(
   true
 );
 
-async function GetMcServerStatus() {
+async function GetMcServerStatus(): Promise<boolean> {
   await socket.awaitOpen();
-  socket.call('mc_server_status').then((status) => {
-    console.log(status);
-    if (isOk(status)) {
-      console.log(status.value.on);
-    }
-  });
+  const status = await socket.call('mc_server_status');
+  return isOk(status) && status.value.on;
 }
 
 export function ServerButton() {
   const [serverOn, setServerOn] = React.useState(false);
+  const setServerOnRef = React.useRef(setServerOn);
+  setServerOnRef.current = setServerOn;
 
   console.log('rendering');
-  GetMcServerStatus();
+  GetMcServerStatus().then((isOn) => {
+    setServerOnRef.current(isOn);
+  });
 
   if (serverOn) {
     return (
