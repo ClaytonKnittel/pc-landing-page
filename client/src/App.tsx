@@ -1,5 +1,7 @@
 import React from 'react';
 
+import { ServerButton } from './ServerButton';
+
 // import { AsyncSocketContext } from "client/util/async_sockets";
 // import { isOk } from "client/util/status";
 // import { Test } from "proto/test";
@@ -10,5 +12,5 @@ import React from 'react';
 // );
 
 export function App() {
-  return <div>Hello Remy.</div>;
+  return <ServerButton />;
 }
