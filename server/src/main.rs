@@ -1,8 +1,11 @@
 use clap::Parser;
 use static_file_server::run_file_server;
 
+use crate::socket_init::create_socket_endpoint;
+
 mod http;
 mod https;
+mod socket_init;
 mod static_file_server;
 mod util;
 
@@ -20,5 +23,11 @@ struct Args {
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
   let args = Args::parse();
 
-  run_file_server(args.prod, args.port).await
+  match tokio::join!(
+    run_file_server(args.prod, args.port),
+    create_socket_endpoint()
+  ) {
+    (Err(err), _) | (_, Err(err)) => Err(err.into()),
+    (Ok(()), Ok(())) => Ok(()),
+  }
 }

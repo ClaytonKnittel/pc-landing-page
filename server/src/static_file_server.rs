@@ -7,7 +7,7 @@ use hyper::{
   service::service_fn,
   Method, Request, Response, StatusCode,
 };
-use tokio::fs::File;
+use tokio::{fs::File, task::JoinHandle};
 use tokio_util::io::ReaderStream;
 
 use crate::{http::run_http_service, https::run_https_service};
@@ -58,14 +58,13 @@ async fn respond_file_contents(uri: &str) -> hyper::Result<Response<BoxBody<Byte
   Ok(not_found())
 }
 
-pub async fn run_file_server(
-  prod: bool,
-  port: u16,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-  let service = service_fn(service);
-  if prod {
-    run_https_service(service, port).await
-  } else {
-    run_http_service(service, port).await
-  }
+pub fn run_file_server(prod: bool, port: u16) -> JoinHandle<()> {
+  tokio::spawn(async move {
+    let service = service_fn(service);
+    if prod {
+      run_https_service(service, port).await.unwrap();
+    } else {
+      run_http_service(service, port).await.unwrap();
+    }
+  })
 }
