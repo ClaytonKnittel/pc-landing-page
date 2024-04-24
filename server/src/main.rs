@@ -6,6 +6,7 @@ use crate::socket_init::create_socket_endpoint;
 mod http;
 mod https;
 mod mc_server;
+mod security;
 mod socket_init;
 mod static_file_server;
 mod util;

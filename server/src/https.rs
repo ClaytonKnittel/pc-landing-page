@@ -1,4 +1,4 @@
-use std::{fs, io, net::SocketAddr, sync::Arc};
+use std::{net::SocketAddr, sync::Arc};
 
 use hyper::{
   body::{Body, Incoming},
@@ -9,14 +9,14 @@ use hyper_util::{
   rt::{TokioExecutor, TokioIo},
   server::conn::auto::Builder,
 };
-use rustls::{
-  pki_types::{CertificateDer, PrivateKeyDer},
-  ServerConfig,
-};
+use rustls::ServerConfig;
 use tokio::net::TcpListener;
 use tokio_rustls::TlsAcceptor;
 
-use crate::util::mk_error;
+use crate::{
+  security::{load_certs, load_private_key, CERTFILE, KEYFILE},
+  util::mk_error,
+};
 
 pub async fn run_https_service<S, B>(
   service: S,
@@ -34,8 +34,8 @@ where
 
   let addr = SocketAddr::new([10, 0, 0, 181].into(), port);
 
-  let certs = load_certs("/etc/letsencrypt/live/cknittel.com/cert.pem")?;
-  let key = load_private_key("/etc/letsencrypt/live/cknittel.com/privkey.pem")?;
+  let certs = load_certs(CERTFILE)?;
+  let key = load_private_key(KEYFILE)?;
 
   println!("Starting server on https://{addr}");
 
@@ -72,20 +72,4 @@ where
       }
     });
   }
-}
-
-fn load_certs(filename: &str) -> io::Result<Vec<CertificateDer<'static>>> {
-  let certfile =
-    fs::File::open(filename).map_err(|e| mk_error(format!("failed to open {filename}: {e}")))?;
-  let mut reader = io::BufReader::new(certfile);
-
-  rustls_pemfile::certs(&mut reader).collect()
-}
-
-fn load_private_key(filename: &str) -> io::Result<PrivateKeyDer<'static>> {
-  let keyfile =
-    fs::File::open(filename).map_err(|e| mk_error(format!("failed to open {filename}: {e}")))?;
-  let mut reader = io::BufReader::new(keyfile);
-
-  rustls_pemfile::private_key(&mut reader).map(|key| key.unwrap())
 }

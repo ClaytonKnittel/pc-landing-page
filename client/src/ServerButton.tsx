@@ -4,6 +4,7 @@ import { ServerSocket } from 'client/ServerMsgs';
 import { AsyncSocketContext } from 'client/util/async_sockets';
 import { isOk } from 'client/util/status';
 
+// TODO: need to use wss for prod
 const socket: ServerSocket = new AsyncSocketContext(
   'ws://[::]:2345/horsney',
   true
