@@ -14,4 +14,6 @@ rustls = "0.23.5"
 tokio-rustls = "0.26.0"
 rustls-pemfile = "2.1.2"
 clap = { version = "4.5.4", features = ["derive"] }
+tokio-util = { version = "0.7.10", features = ["codec"] }
+futures-util = "0.3.30"
 

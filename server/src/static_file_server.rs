@@ -1,29 +1,64 @@
 use std::{fs, io, path::PathBuf};
 
-use http_body_util::Full;
+use futures_util::TryStreamExt;
+use http_body_util::{combinators::BoxBody, BodyExt, Full, StreamBody};
 use hyper::{
-  body::{self, Bytes},
+  body::{self, Bytes, Frame},
   service::service_fn,
-  Request, Response,
+  Method, Request, Response, StatusCode,
 };
+use tokio::fs::File;
+use tokio_util::io::ReaderStream;
 
 use crate::{http::run_http_service, https::run_https_service};
 
 const DIR: &str = "../client/dist/dev/static";
 
-fn client_static_path() -> io::Result<PathBuf> {
-  fs::canonicalize(DIR)
+fn client_static_path() -> PathBuf {
+  fs::canonicalize(DIR).unwrap()
 }
 
-async fn test(req: Request<body::Incoming>) -> hyper::Result<Response<Full<Bytes>>> {
-  Ok(Response::new(Full::new("Hello".into())))
+async fn service(
+  req: Request<body::Incoming>,
+) -> hyper::Result<Response<BoxBody<Bytes, io::Error>>> {
+  match (req.method(), req.uri().path()) {
+    (&Method::GET, uri) => respond_file_contents(uri).await,
+    _ => Ok(not_found()),
+  }
+}
+
+fn not_found() -> Response<BoxBody<Bytes, io::Error>> {
+  Response::builder()
+    .status(StatusCode::NOT_FOUND)
+    .body(
+      Full::new("Not Found".into())
+        .map_err(|e| match e {})
+        .boxed(),
+    )
+    .unwrap()
+}
+
+async fn respond_file_contents(uri: &str) -> hyper::Result<Response<BoxBody<Bytes, io::Error>>> {
+  let full_path = client_static_path().join(uri);
+
+  if let Ok(file) = File::open(full_path).await {
+    let reader_stream = ReaderStream::new(file);
+    let body_stream = StreamBody::new(reader_stream.map_ok(Frame::data)).boxed();
+    let response = Response::builder()
+      .status(StatusCode::OK)
+      .body(body_stream)
+      .unwrap_or_else(|_| not_found());
+    return Ok(response);
+  }
+
+  Ok(not_found())
 }
 
 pub async fn run_file_server(
   prod: bool,
   port: u16,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-  let service = service_fn(test);
+  let service = service_fn(service);
   if prod {
     run_https_service(service, port).await
   } else {
