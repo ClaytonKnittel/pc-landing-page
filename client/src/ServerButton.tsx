@@ -1,21 +1,30 @@
 import React from 'react';
 
-import { ServerSocket } from './ServerMsgs';
-import { AsyncSocketContext } from './util/async_sockets';
-import { isOk } from './util/status';
+import { ServerSocket } from 'client/ServerMsgs';
+import { AsyncSocketContext } from 'client/util/async_sockets';
+import { isOk } from 'client/util/status';
 
-export function ServerButton() {
-  const [serverOn, setServerOn] = React.useState(false);
-  const socket: ServerSocket = new AsyncSocketContext(
-    'ws://[::]:2345/horsney',
-    true
-  );
+const socket: ServerSocket = new AsyncSocketContext(
+  'ws://[::]:2345/horsney',
+  true
+);
+
+async function GetMcServerStatus() {
+  await socket.awaitOpen();
   socket.call('mc_server_status').then((status) => {
     console.log(status);
     if (isOk(status)) {
       console.log(status.value.on);
     }
   });
+}
+
+export function ServerButton() {
+  const [serverOn, setServerOn] = React.useState(false);
+
+  console.log('rendering');
+  GetMcServerStatus();
+
   if (serverOn) {
     return (
       <div
