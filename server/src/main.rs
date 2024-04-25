@@ -26,6 +26,7 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+  pretty_env_logger::init();
   let args = Args::parse();
 
   match tokio::join!(

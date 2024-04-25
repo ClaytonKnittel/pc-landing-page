@@ -225,7 +225,7 @@ export class AsyncSocketContext<
 
   constructor(url: string, verbose?: boolean) {
     this.url = url;
-    this.socket = new WebSocket(url, ['websocket', 'polling']);
+    this.socket = new WebSocket(url);
     this.isOpen = false;
     this.timeout = 1000;
     this.verbose = verbose ?? false;

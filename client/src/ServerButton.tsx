@@ -6,11 +6,11 @@ import { isOk } from 'client/util/status';
 
 // TODO: need to use wss for prod
 const socket: ServerSocket = new AsyncSocketContext(
-  'ws://[::]:2345/horsney',
+  `wss://${window.location.hostname}:2345/horsney`,
   true
 );
 
-async function GetMcServerStatus(): Promise<boolean> {
+async function getMcServerStatus(): Promise<boolean> {
   await socket.awaitOpen();
   const status = await socket.call('mc_server_status');
   return isOk(status) && status.value.on;
@@ -21,8 +21,7 @@ export function ServerButton() {
   const setServerOnRef = React.useRef(setServerOn);
   setServerOnRef.current = setServerOn;
 
-  console.log('rendering');
-  GetMcServerStatus().then((isOn) => {
+  getMcServerStatus().then((isOn) => {
     setServerOnRef.current(isOn);
   });
 
