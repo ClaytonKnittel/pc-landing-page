@@ -3,10 +3,13 @@ import React from 'react';
 import { ServerSocket } from 'client/ServerMsgs';
 import { AsyncSocketContext } from 'client/util/async_sockets';
 import { isOk } from 'client/util/status';
+import { inSecureEnvironment } from 'client/util/util';
 
 // TODO: need to use wss for prod
 const socket: ServerSocket = new AsyncSocketContext(
-  `wss://${window.location.hostname}:2345/horsney`,
+  `${inSecureEnvironment() ? 'wss' : 'ws'}://${
+    window.location.hostname
+  }:2345/horsney`,
   true
 );
 
