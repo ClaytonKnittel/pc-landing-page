@@ -11,7 +11,7 @@ use tokio::net::TcpListener;
 
 pub async fn run_http_service<S, B>(
   service: S,
-  port: u16,
+  addr: SocketAddr,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>>
 where
   S: Service<Request<Incoming>, Response = Response<B>> + Copy + Send + 'static,
@@ -21,8 +21,6 @@ where
   B::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
   B::Data: Send,
 {
-  let addr = SocketAddr::from(([127, 0, 0, 1], port));
-
   println!("Starting server on http://{addr}");
 
   let listener = TcpListener::bind(addr).await?;

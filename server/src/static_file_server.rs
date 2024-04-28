@@ -1,4 +1,4 @@
-use std::{fs, io, path::PathBuf};
+use std::{fs, io, net::SocketAddr, path::PathBuf};
 
 use futures_util::TryStreamExt;
 use http_body_util::{combinators::BoxBody, BodyExt, Full, StreamBody};
@@ -60,13 +60,13 @@ async fn respond_file_contents(uri: &str) -> hyper::Result<Response<BoxBody<Byte
   Ok(not_found())
 }
 
-pub fn run_file_server(prod: bool, port: u16) -> JoinHandle<()> {
+pub fn run_file_server(prod: bool, addr: SocketAddr) -> JoinHandle<()> {
   tokio::spawn(async move {
     let service = service_fn(service);
     if prod {
-      run_https_service(service, port).await.unwrap();
+      run_https_service(service, addr).await.unwrap();
     } else {
-      run_http_service(service, port).await.unwrap();
+      run_http_service(service, addr).await.unwrap();
     }
   })
 }

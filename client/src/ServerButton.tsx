@@ -5,7 +5,6 @@ import { AsyncSocketContext } from 'client/util/async_sockets';
 import { isOk } from 'client/util/status';
 import { inSecureEnvironment } from 'client/util/util';
 
-// TODO: need to use wss for prod
 const socket: ServerSocket = new AsyncSocketContext(
   `${inSecureEnvironment() ? 'wss' : 'ws'}://${
     window.location.hostname
@@ -24,9 +23,9 @@ export function ServerButton() {
   const setServerOnRef = React.useRef(setServerOn);
   setServerOnRef.current = setServerOn;
 
-  getMcServerStatus().then((isOn) => {
-    setServerOnRef.current(isOn);
-  });
+  React.useEffect(() => {
+    getMcServerStatus().then(setServerOnRef.current);
+  }, []);
 
   if (serverOn) {
     return (

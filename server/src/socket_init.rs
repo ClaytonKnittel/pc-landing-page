@@ -1,7 +1,4 @@
-use std::{
-  net::{SocketAddr, SocketAddrV4},
-  time::Duration,
-};
+use std::{net::SocketAddr, time::Duration};
 
 use async_sockets::{
   AsyncSocket, AsyncSocketContext, AsyncSocketEmitters, AsyncSocketListeners, AsyncSocketOptions,
@@ -61,16 +58,10 @@ async fn handle_emit_event(
   match event {}
 }
 
-pub fn create_socket_endpoint(prod: bool, port: u16) -> JoinHandle<()> {
-  let bind_addr = if prod {
-    SocketAddr::V4(SocketAddrV4::new([10, 0, 0, 181].into(), port))
-  } else {
-    SocketAddr::V4(SocketAddrV4::new([127, 0, 0, 1].into(), port))
-  };
-
+pub fn create_socket_endpoint(prod: bool, addr: SocketAddr) -> JoinHandle<()> {
   let options = AsyncSocketOptions::new()
     .with_path("horsney")
-    .with_bind_addr(bind_addr)
+    .with_bind_addr(addr)
     .with_timeout(Duration::from_secs(10))
     .with_verbose(false);
 
@@ -85,7 +76,7 @@ pub fn create_socket_endpoint(prod: bool, port: u16) -> JoinHandle<()> {
 
   tokio::spawn(async move {
     println!(
-      "Starting server on {}://{bind_addr}",
+      "Starting server on {}://{addr}",
       if prod { "wss" } else { "ws" }
     );
     AsyncSocket::new(
