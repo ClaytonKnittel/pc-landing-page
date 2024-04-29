@@ -3,6 +3,7 @@ import { DeepReadonly } from 'ts-essentials';
 import { v4 as uuidv4 } from 'uuid';
 
 import {
+  SerializedStatus,
   Status,
   StatusCode,
   deserializeStatus,
@@ -27,15 +28,15 @@ interface CallMessage<Params extends unknown[]> {
   args: Params | null;
 }
 
-interface ResponseMessage<T> {
+interface ResponseMessage {
   uuid: string;
-  status: Status<T>;
+  status: SerializedStatus;
 }
 
 interface SocketMessage {
   emit?: EmitMessage<unknown[]>;
   call?: CallMessage<unknown[]>;
-  response?: ResponseMessage<unknown>;
+  response?: ResponseMessage;
 }
 
 function isEmitMessage<Params extends unknown[]>(
@@ -66,16 +67,14 @@ function isCallMessage<Params extends unknown[]>(
   );
 }
 
-function isResponseMessage<Params extends unknown[]>(
-  message: unknown
-): message is ResponseMessage<Params> {
+function isResponseMessage(message: unknown): message is ResponseMessage {
   return (
     message !== null &&
     typeof message === 'object' &&
     'uuid' in message &&
     typeof message.uuid === 'string' &&
     'status' in message &&
-    isStatus(message.status)
+    isSerializedStatus(message.status)
   );
 }
 
@@ -287,14 +286,14 @@ export class AsyncSocketContext<
     if (this.verbose) {
       console.log(`responding to ${message.event} with`, status);
     }
-    const response: ResponseMessage<unknown> = {
+    const response: ResponseMessage = {
       uuid: message.uuid,
-      status,
+      status: serializeStatus(status),
     };
     this.sendMessage({ response });
   }
 
-  private async handleResponse({ uuid, status }: ResponseMessage<unknown>) {
+  private async handleResponse({ uuid, status }: ResponseMessage) {
     if (this.verbose) {
       console.log(uuid, status);
     }
@@ -310,7 +309,7 @@ export class AsyncSocketContext<
     >;
     clearTimeout(messageInfo.timeoutId);
     messageInfo.resolve(
-      status as ResponseStatus<
+      deserializeStatus(status) as ResponseStatus<
         CallResponseEvents<ListenEvents, EmitEvents>,
         ListenEvents
       >
