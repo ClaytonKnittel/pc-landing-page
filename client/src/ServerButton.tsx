@@ -1,46 +1,38 @@
 import React from 'react';
 
 import { ServerSocket } from 'client/ServerMsgs';
-import { AsyncSocketContext } from 'client/util/async_sockets';
 import { isOk } from 'client/util/status';
-import { inSecureEnvironment } from 'client/util/util';
 
 enum ServerState {
-  Unknown = 'Unknown',
-  Off = 'Off',
-  Booting = 'Booting',
-  On = 'On',
-  ShutDown = 'ShutDown',
+  UNKNOWN = 'UNKNOWN',
+  OFF = 'OFF',
+  BOOTING = 'BOOTING',
+  ON = 'ON',
+  SHUTDOWN = 'SHUTDOWN',
 }
 
-const socket: ServerSocket = new AsyncSocketContext(
-  `${inSecureEnvironment() ? 'wss' : 'ws'}://${
-    window.location.hostname
-  }:2345/horsney`,
-  true
-);
-
-async function getMcServerStatus(): Promise<ServerState> {
+async function getMcServerStatus(socket: ServerSocket): Promise<ServerState> {
   await socket.awaitOpen();
   const status = await socket.call('mc_server_status');
   if (isOk(status)) {
-    return status.value.on ? ServerState.On : ServerState.Off;
+    return status.value.on ? ServerState.ON : ServerState.OFF;
   }
-  return ServerState.Unknown;
+  return ServerState.UNKNOWN;
 }
 
-export function ServerButton() {
+export interface ServerButtonProps {
+  socket: ServerSocket;
+}
+
+export function ServerButton(props: ServerButtonProps) {
   const [serverOn, setServerOn] = React.useState(false);
-  const setServerOnRef = React.useRef(setServerOn);
-  setServerOnRef.current = setServerOn;
 
-  const [state, setState] = React.useState(ServerState.Unknown);
-
+  const [state, setState] = React.useState(ServerState.UNKNOWN);
   const setStateRef = React.useRef(setState);
   setStateRef.current = setState;
 
   React.useEffect(() => {
-    getMcServerStatus().then(setStateRef.current);
+    getMcServerStatus(props.socket).then(setStateRef.current);
   }, []);
 
   return (
