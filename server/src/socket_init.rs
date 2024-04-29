@@ -42,10 +42,7 @@ async fn handle_call_event(
 ) -> Status<ToClientResponses> {
   match event {
     FromClientRequests::McServerStatus {} => match mc_server_status() {
-      Ok(unit) => {
-        println!("Mc server!");
-        Status::Ok(ToClientResponses::McServerStatus { on: unit.active })
-      }
+      Ok(unit) => Status::Ok(ToClientResponses::McServerStatus { on: unit.active }),
       Err(_) => Status::InternalServerError("Failed to read MC server status".into()),
     },
   }
