@@ -1,6 +1,6 @@
-"use strict";
+'use strict';
 
-const path = require("node:path");
+const path = require('node:path');
 
 function maybeReplaceSubstr(str, substr, to_replace) {
   const idx = str.indexOf(substr);
@@ -11,7 +11,7 @@ function maybeReplaceSubstr(str, substr, to_replace) {
 }
 
 function stripExt(filename) {
-  const idx = filename.indexOf(".");
+  const idx = filename.indexOf('.');
   return filename.substr(0, idx === -1 ? filename.length : idx);
 }
 
@@ -22,22 +22,22 @@ function stripExt(filename) {
  */
 module.exports = {
   meta: {
-    type: "suggestion",
+    type: 'suggestion',
     docs: {
-      description: "Description of the rule",
+      description: 'Description of the rule',
     },
-    fixable: "code",
+    fixable: 'code',
     schema: [],
   },
   create: function (context) {
     return {
       ImportDeclaration: function (node) {
         if (
-          node.source?.type === "Literal" &&
-          node.source.value.startsWith(".")
+          node.source?.type === 'Literal' &&
+          node.source.value.startsWith('.')
         ) {
           // Allow relative imports if module stylesheets.
-          if (node.source.value.endsWith(".module.css")) {
+          if (node.source.value.endsWith('.module.css')) {
             return;
           }
           context.path;
@@ -46,8 +46,8 @@ module.exports = {
           const import_dir = path.resolve(dir, node.source.value);
           let new_import_dir = maybeReplaceSubstr(
             import_dir,
-            "/client/src/",
-            "client/",
+            '/client/src/',
+            'client/'
           );
 
           if (new_import_dir !== import_dir) {
