@@ -1,0 +1,22 @@
+name: Format Client
+
+on:
+  push:
+  pull_request:
+jobs:
+  check-format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Out Repository
+        uses: actions/checkout@v2
+        with:
+          path: pc-landing-page
+          submodules: recursive
+      - name: Install prettier
+        working-directory: pc-landing-page/client
+        run: |
+          npm install prettier
+      - name: Run prettier
+        working-directory: pc-landing-page/client
+        run: |
+          npx prettier -c .

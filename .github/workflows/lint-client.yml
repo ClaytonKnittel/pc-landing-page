@@ -1,0 +1,26 @@
+name: Lint Client
+
+on:
+  push:
+  pull_request:
+jobs:
+  check-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Out Repository
+        uses: actions/checkout@v2
+        with:
+          path: pc-landing-page
+          submodules: recursive
+      - name: Install eslint
+        working-directory: pc-landing-page/client
+        run: |
+          npm install eslint
+      - name: Generate CSS types
+        working-directory: pc-landing-page/client
+        run: |
+          npm run generate-css-types
+      - name: Run eslint
+        working-directory: pc-landing-page/client
+        run: |
+          npx eslint --max-warnings=0 .

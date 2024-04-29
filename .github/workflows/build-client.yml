@@ -1,0 +1,24 @@
+name: Build Client
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+jobs:
+  check-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Out Repository
+        uses: actions/checkout@v2
+        with:
+          path: pc-landing-page
+          submodules: recursive
+      - name: Install dependencies
+        working-directory: pc-landing-page/client
+        run: |
+          npm install
+      - name: Build
+        working-directory: pc-landing-page/client
+        run: |
+          npm run build
