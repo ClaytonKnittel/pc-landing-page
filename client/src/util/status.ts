@@ -2,8 +2,18 @@ export enum StatusCode {
   /* eslint-disable @typescript-eslint/naming-convention */
   Ok = 'Ok',
 
-  MessageTimeout = 'MessageTimeout',
-  NotFound = 'NotFound',
+  // Serialization errors.
+  SerializeFailed = 'SerializeFailed',
+  DeserializeFailed = 'DeserializeFailed',
+
+  // Async messaging errors.
+  MessageQueueError = 'MessageQueueError',
+  RemoveMessageQueueError = 'RemoveMessageQueueError',
+  RecvError = 'RecvError',
+  Timeout = 'Timeout',
+
+  // Internal server errors.
+  InternalServerError = 'InternalServerError',
   /* eslint-enable @typescript-eslint/naming-convention */
 }
 

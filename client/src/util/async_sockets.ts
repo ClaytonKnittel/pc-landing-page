@@ -3,7 +3,6 @@ import { DeepReadonly } from 'ts-essentials';
 import { v4 as uuidv4 } from 'uuid';
 
 import {
-  SerializedStatus,
   Status,
   StatusCode,
   deserializeStatus,
@@ -28,15 +27,15 @@ interface CallMessage<Params extends unknown[]> {
   args: Params | null;
 }
 
-interface ResponseMessage {
+interface ResponseMessage<T> {
   uuid: string;
-  status: SerializedStatus;
+  status: Status<T>;
 }
 
 interface SocketMessage {
   emit?: EmitMessage<unknown[]>;
   call?: CallMessage<unknown[]>;
-  response?: ResponseMessage;
+  response?: ResponseMessage<unknown>;
 }
 
 function isEmitMessage<Params extends unknown[]>(
@@ -67,14 +66,16 @@ function isCallMessage<Params extends unknown[]>(
   );
 }
 
-function isResponseMessage(message: unknown): message is ResponseMessage {
+function isResponseMessage<Params extends unknown[]>(
+  message: unknown
+): message is ResponseMessage<Params> {
   return (
     message !== null &&
     typeof message === 'object' &&
     'uuid' in message &&
     typeof message.uuid === 'string' &&
     'status' in message &&
-    isSerializedStatus(message.status)
+    isStatus(message.status)
   );
 }
 
@@ -286,14 +287,14 @@ export class AsyncSocketContext<
     if (this.verbose) {
       console.log(`responding to ${message.event} with`, status);
     }
-    const response: ResponseMessage = {
+    const response: ResponseMessage<unknown> = {
       uuid: message.uuid,
-      status: serializeStatus(status),
+      status,
     };
     this.sendMessage({ response });
   }
 
-  private async handleResponse({ uuid, status }: ResponseMessage) {
+  private async handleResponse({ uuid, status }: ResponseMessage<unknown>) {
     if (this.verbose) {
       console.log(uuid, status);
     }
@@ -309,7 +310,7 @@ export class AsyncSocketContext<
     >;
     clearTimeout(messageInfo.timeoutId);
     messageInfo.resolve(
-      deserializeStatus(status) as ResponseStatus<
+      status as ResponseStatus<
         CallResponseEvents<ListenEvents, EmitEvents>,
         ListenEvents
       >
@@ -407,7 +408,7 @@ export class AsyncSocketContext<
 
       callback(
         makeErrStatus(
-          StatusCode.MessageTimeout,
+          StatusCode.Timeout,
           `Async socket call ${eventName} timed out after ${
             timeoutMs / 1000
           } second${timeoutMs === 1000 ? '' : 's'}`
