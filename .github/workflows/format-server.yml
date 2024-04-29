@@ -1,4 +1,4 @@
-name: Build Client
+name: Format Server
 
 on:
   push:
@@ -9,16 +9,16 @@ jobs:
   check-build:
     runs-on: ubuntu-latest
     steps:
+      - name: Check out Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
       - name: Check out repository
         uses: actions/checkout@v2
         with:
           path: pc-landing-page
           submodules: recursive
-      - name: Install dependencies
-        working-directory: pc-landing-page/client
+      - name: Check format
+        working-directory: pc-landing-page/server
         run: |
-          npm install
-      - name: Build
-        working-directory: pc-landing-page/client
-        run: |
-          npm run build
+          cargo fmt --check

@@ -1,0 +1,26 @@
+name: Lint Server
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+jobs:
+  check-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Check out repository
+        uses: actions/checkout@v2
+        with:
+          path: pc-landing-page
+          submodules: recursive
+      - name: Check lint
+        working-directory: pc-landing-page/server
+        env:
+          RUSTFLAGS: "-D warnings"
+        run: |
+          cargo clippy

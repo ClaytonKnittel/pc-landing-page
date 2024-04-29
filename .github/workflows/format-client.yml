@@ -7,7 +7,7 @@ jobs:
   check-format:
     runs-on: ubuntu-latest
     steps:
-      - name: Check Out Repository
+      - name: Check out repository
         uses: actions/checkout@v2
         with:
           path: pc-landing-page
