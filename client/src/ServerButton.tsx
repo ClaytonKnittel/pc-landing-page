@@ -5,6 +5,14 @@ import { AsyncSocketContext } from 'client/util/async_sockets';
 import { isOk } from 'client/util/status';
 import { inSecureEnvironment } from 'client/util/util';
 
+enum ServerState {
+  Unknown = 'Unknown',
+  Off = 'Off',
+  Booting = 'Booting',
+  On = 'On',
+  ShutDown = 'ShutDown',
+}
+
 const socket: ServerSocket = new AsyncSocketContext(
   `${inSecureEnvironment() ? 'wss' : 'ws'}://${
     window.location.hostname
@@ -12,10 +20,13 @@ const socket: ServerSocket = new AsyncSocketContext(
   true
 );
 
-async function getMcServerStatus(): Promise<boolean> {
+async function getMcServerStatus(): Promise<ServerState> {
   await socket.awaitOpen();
   const status = await socket.call('mc_server_status');
-  return isOk(status) && status.value.on;
+  if (isOk(status)) {
+    return status.value.on ? ServerState.On : ServerState.Off;
+  }
+  return ServerState.Unknown;
 }
 
 export function ServerButton() {
@@ -23,29 +34,26 @@ export function ServerButton() {
   const setServerOnRef = React.useRef(setServerOn);
   setServerOnRef.current = setServerOn;
 
+  const [state, setState] = React.useState(ServerState.Unknown);
+
+  const setStateRef = React.useRef(setState);
+  setStateRef.current = setState;
+
   React.useEffect(() => {
-    getMcServerStatus().then(setServerOnRef.current);
+    getMcServerStatus().then(setStateRef.current);
   }, []);
 
-  if (serverOn) {
-    return (
+  return (
+    <>
       <div
         onClick={() => {
-          setServerOn(false);
+          setServerOn(!serverOn);
         }}
       >
-        Turn Server Off
+        Turn Server {serverOn ? 'Off' : 'On'}
       </div>
-    );
-  } else {
-    return (
-      <div
-        onClick={() => {
-          setServerOn(true);
-        }}
-      >
-        Turn Server On
-      </div>
-    );
-  }
+      <br />
+      <div>Current Status: {state}</div>
+    </>
+  );
 }
