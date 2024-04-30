@@ -29,7 +29,7 @@ impl Serialize for ServerState {
   where
     S: serde::Serializer,
   {
-    self.as_str_name().serialize(serializer)
+    (*self as i32).serialize(serializer)
   }
 }
 
@@ -38,12 +38,7 @@ impl<'de> Deserialize<'de> for ServerState {
   where
     D: serde::Deserializer<'de>,
   {
-    let repr = String::deserialize(deserializer)?;
-    match Self::from_str_name(&repr) {
-      Some(s) => Ok(s),
-      None => Err(de::Error::custom(format!(
-        "Unrecognized enum variant: {repr}"
-      ))),
-    }
+    let repr = i32::deserialize(deserializer)?;
+    Self::try_from(repr).map_err(de::Error::custom)
   }
 }
