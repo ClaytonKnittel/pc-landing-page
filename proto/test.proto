@@ -1,7 +1,0 @@
-syntax = "proto2";
-
-package landing.proto;
-
-message Test {
-  optional string name = 1;
-}

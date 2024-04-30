@@ -8,10 +8,13 @@ use static_file_server::run_file_server;
 
 use crate::socket_init::create_socket_endpoint;
 
+mod error;
 mod mc_server;
+mod proto;
 mod security;
 mod socket_init;
 mod static_file_server;
+mod systemctl;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]

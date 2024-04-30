@@ -1,0 +1,11 @@
+syntax = "proto2";
+
+package mc_server.proto;
+
+enum ServerState {
+  UNKNOWN = 0;
+  OFF = 1;
+  BOOTING = 2;
+  ON = 3;
+  SHUTDOWN = 4;
+}

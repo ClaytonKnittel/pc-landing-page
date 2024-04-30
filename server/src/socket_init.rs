@@ -8,7 +8,8 @@ use serde::Deserialize;
 use tokio::task::JoinHandle;
 
 use crate::{
-  mc_server::mc_server_status,
+  mc_server::{boot_server, mc_server_state},
+  proto::ServerState,
   security::{CERTFILE, KEYFILE},
 };
 
@@ -27,11 +28,13 @@ enum FromClientResponses {}
 #[derive(AsyncSocketListeners)]
 enum FromClientRequests {
   McServerStatus {},
+  BootServer {},
 }
 
 #[derive(AsyncSocketResponders)]
 enum ToClientResponses {
-  McServerStatus { on: bool },
+  McServerStatus { state: ServerState },
+  BootServer {},
 }
 
 async fn handle_connect_event(_context: AsyncSocketContext<ServerEmitEvents>) {}
@@ -41,9 +44,13 @@ async fn handle_call_event(
   _context: AsyncSocketContext<ServerEmitEvents>,
 ) -> Status<ToClientResponses> {
   match event {
-    FromClientRequests::McServerStatus {} => match mc_server_status() {
-      Ok(unit) => Status::Ok(ToClientResponses::McServerStatus { on: unit.active }),
+    FromClientRequests::McServerStatus {} => match mc_server_state().await {
+      Ok(state) => Status::Ok(ToClientResponses::McServerStatus { state }),
       Err(_) => Status::InternalServerError("Failed to read MC server status".into()),
+    },
+    FromClientRequests::BootServer {} => match boot_server().await {
+      Ok(()) => Status::Ok(ToClientResponses::BootServer {}),
+      Err(err) => Status::InternalServerError(format!("Failed to boot server: {err}")),
     },
   }
 }

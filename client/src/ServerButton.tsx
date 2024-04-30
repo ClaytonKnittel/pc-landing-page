@@ -2,20 +2,13 @@ import React from 'react';
 
 import { ServerSocket } from 'client/ServerMsgs';
 import { isOk } from 'client/util/status';
-
-enum ServerState {
-  UNKNOWN = 'UNKNOWN',
-  OFF = 'OFF',
-  BOOTING = 'BOOTING',
-  ON = 'ON',
-  SHUTDOWN = 'SHUTDOWN',
-}
+import { ServerState } from 'proto/mc_server';
 
 async function getMcServerStatus(socket: ServerSocket): Promise<ServerState> {
   await socket.awaitOpen();
   const status = await socket.call('mc_server_status');
   if (isOk(status)) {
-    return status.value.on ? ServerState.ON : ServerState.OFF;
+    return status.value.state;
   }
   return ServerState.UNKNOWN;
 }
