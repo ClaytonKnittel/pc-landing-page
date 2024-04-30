@@ -8,7 +8,7 @@ use serde::Deserialize;
 use tokio::task::JoinHandle;
 
 use crate::{
-  mc_server::{boot_server, mc_server_state},
+  mc_server::{boot_server, mc_server_state, shutdown_server},
   proto::ServerState,
   security::{CERTFILE, KEYFILE},
 };
@@ -29,12 +29,14 @@ enum FromClientResponses {}
 enum FromClientRequests {
   McServerStatus {},
   BootServer {},
+  ShutdownServer {},
 }
 
 #[derive(AsyncSocketResponders)]
 enum ToClientResponses {
   McServerStatus { state: ServerState },
   BootServer {},
+  ShutdownServer {},
 }
 
 async fn handle_connect_event(_context: AsyncSocketContext<ServerEmitEvents>) {}
@@ -50,6 +52,10 @@ async fn handle_call_event(
     },
     FromClientRequests::BootServer {} => match boot_server().await {
       Ok(()) => Status::Ok(ToClientResponses::BootServer {}),
+      Err(err) => Status::InternalServerError(format!("Failed to boot server: {err}")),
+    },
+    FromClientRequests::ShutdownServer {} => match shutdown_server().await {
+      Ok(()) => Status::Ok(ToClientResponses::ShutdownServer {}),
       Err(err) => Status::InternalServerError(format!("Failed to boot server: {err}")),
     },
   }

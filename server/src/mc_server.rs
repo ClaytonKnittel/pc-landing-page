@@ -85,3 +85,14 @@ pub async fn boot_server() -> Result<(), Box<dyn error::Error>> {
     Err(McError::NonzeroExit(exit_status).into())
   }
 }
+
+pub async fn shutdown_server() -> Result<(), Box<dyn error::Error>> {
+  let mut guard = mc_server_status_guard().await?;
+  let exit_status = guard.unit.as_ref().unwrap().stop().await?;
+  if exit_status.success() {
+    guard.begin_shutdown();
+    Ok(())
+  } else {
+    Err(McError::NonzeroExit(exit_status).into())
+  }
+}
