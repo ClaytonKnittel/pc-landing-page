@@ -20,6 +20,10 @@ jobs:
         working-directory: pc-landing-page/client
         run: |
           npm run generate-css-types
+      - name: Generate proto types
+        working-directory: pc-landing-page/client
+        run: |
+          npm run generate-proto
       - name: Run eslint
         working-directory: pc-landing-page/client
         run: |
