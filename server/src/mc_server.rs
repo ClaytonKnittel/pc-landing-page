@@ -1,9 +1,10 @@
-use crate::{error::McError, proto::ServerState, systemctl::Unit};
-use lazy_static::lazy_static;
-use std::{
-  error,
-  time::{Duration, Instant},
+use crate::{
+  error::{McError, ThreadSafeError},
+  proto::ServerState,
+  systemctl::Unit,
 };
+use lazy_static::lazy_static;
+use std::time::{Duration, Instant};
 use tokio::sync::{Mutex, MutexGuard};
 
 const MC_SERVER_SERVICE: &str = "mc_server.service";
@@ -34,14 +35,14 @@ impl ServerStatus {
   }
 
   fn begin_shutdown(&mut self) {
-    self.state = ServerState::Booting;
+    self.state = ServerState::Shutdown;
   }
 
-  async fn maybe_update(&mut self) -> Result<(), Box<dyn error::Error>> {
-    let now = Instant::now();
-    if self.unit.is_some() && now < self.last_updated + REFRESH_RATE {
-      return Ok(());
-    }
+  fn abort_shutdown(&mut self) {
+    self.state = ServerState::On;
+  }
+
+  async fn do_update(&mut self, now: Instant) -> Result<(), Box<dyn ThreadSafeError>> {
     self.unit = Some(Self::refresh_unit().await?);
     self.last_updated = now;
 
@@ -54,15 +55,27 @@ impl ServerStatus {
     Ok(())
   }
 
-  async fn refresh_unit() -> Result<Unit, Box<dyn error::Error>> {
+  async fn maybe_update(&mut self) -> Result<(), Box<dyn ThreadSafeError>> {
+    let now = Instant::now();
+    if self.unit.is_some() && now < self.last_updated + REFRESH_RATE {
+      return Ok(());
+    }
+    self.do_update(now).await
+  }
+
+  async fn force_update(&mut self) -> Result<(), Box<dyn ThreadSafeError>> {
+    self.do_update(Instant::now()).await
+  }
+
+  async fn refresh_unit() -> Result<Unit, Box<dyn ThreadSafeError>> {
     Unit::from_systemctl(MC_SERVER_SERVICE)
       .await
       .map_err(Box::from)
   }
 }
 
-async fn mc_server_status_guard<'a>() -> Result<MutexGuard<'a, ServerStatus>, Box<dyn error::Error>>
-{
+async fn mc_server_status_guard<'a>(
+) -> Result<MutexGuard<'a, ServerStatus>, Box<dyn ThreadSafeError>> {
   lazy_static! {
     static ref SERVER_STATUS: Mutex<ServerStatus> = Mutex::new(ServerStatus::new());
   }
@@ -71,12 +84,18 @@ async fn mc_server_status_guard<'a>() -> Result<MutexGuard<'a, ServerStatus>, Bo
   Ok(status_guard)
 }
 
-pub async fn mc_server_state() -> Result<ServerState, Box<dyn error::Error>> {
+pub async fn mc_server_state() -> Result<ServerState, Box<dyn ThreadSafeError>> {
   Ok(mc_server_status_guard().await?.state())
 }
 
-pub async fn boot_server() -> Result<(), Box<dyn error::Error>> {
+pub async fn boot_server() -> Result<(), Box<dyn ThreadSafeError>> {
   let mut guard = mc_server_status_guard().await?;
+  if guard.state != ServerState::Off {
+    return Err(
+      McError::InvalidOp(format!("Can't turn server on in {:?} state", guard.state)).into(),
+    );
+  }
+
   let exit_status = guard.unit.as_ref().unwrap().start().await?;
   if exit_status.success() {
     guard.begin_boot();
@@ -86,13 +105,34 @@ pub async fn boot_server() -> Result<(), Box<dyn error::Error>> {
   }
 }
 
-pub async fn shutdown_server() -> Result<(), Box<dyn error::Error>> {
-  let mut guard = mc_server_status_guard().await?;
+async fn await_server_shutdown() -> Result<(), Box<dyn ThreadSafeError>> {
+  println!("awaiting shutdown");
+  let guard = mc_server_status_guard().await?;
   let exit_status = guard.unit.as_ref().unwrap().stop().await?;
-  if exit_status.success() {
-    guard.begin_shutdown();
-    Ok(())
+  println!("exit: {exit_status}");
+  if !exit_status.success() {
+    // TODO: deadlocks here:
+    mc_server_status_guard().await?.force_update().await
   } else {
-    Err(McError::NonzeroExit(exit_status).into())
+    mc_server_status_guard().await?.abort_shutdown();
+    Ok(())
   }
+}
+
+pub async fn shutdown_server() -> Result<(), Box<dyn ThreadSafeError>> {
+  let mut guard = mc_server_status_guard().await?;
+  if guard.state != ServerState::On {
+    return Err(
+      McError::InvalidOp(format!("Can't turn server off in {:?} state", guard.state)).into(),
+    );
+  }
+  println!("Shutdown started");
+  tokio::spawn(async {
+    if let Err(err) = await_server_shutdown().await {
+      eprintln!("Failed to shut down Minecraft Server: {err}");
+    }
+  });
+
+  guard.begin_shutdown();
+  Ok(())
 }
