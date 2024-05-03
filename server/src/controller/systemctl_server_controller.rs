@@ -3,8 +3,11 @@ use crate::{
   proto::ServerState,
   systemctl::{self, Unit},
 };
+use async_trait::async_trait;
 use std::time::{Duration, Instant};
 use tokio::sync::{Mutex, MutexGuard};
+
+use super::controller::ServerController;
 
 const MC_SERVER_SERVICE: &str = "mc_server.service";
 const REFRESH_RATE: Duration = Duration::from_secs(5);
@@ -86,7 +89,7 @@ impl SystemctlServerController {
     }
   }
 
-  async fn mc_server_status_guard(
+  async fn server_status_guard(
     &self,
   ) -> Result<MutexGuard<'_, SystemctlServerStatus>, Box<dyn ThreadSafeError>> {
     let mut status_guard = self.server_status.lock().await;
@@ -94,13 +97,26 @@ impl SystemctlServerController {
     Ok(status_guard)
   }
 
-  pub async fn mc_server_state(&self) -> Result<ServerState, Box<dyn ThreadSafeError>> {
-    Ok(self.mc_server_status_guard().await?.state())
+  async fn await_server_shutdown(&self) -> Result<(), Box<dyn ThreadSafeError>> {
+    let exit_status = systemctl::stop(MC_SERVER_SERVICE).await?;
+    if exit_status.success() {
+      self.server_status_guard().await?.complete_shutdown();
+    } else {
+      self.server_status_guard().await?.abort_shutdown();
+    }
+    Ok(())
+  }
+}
+
+#[async_trait]
+impl ServerController for SystemctlServerController {
+  async fn server_state(&self) -> Result<ServerState, Box<dyn ThreadSafeError>> {
+    Ok(self.server_status_guard().await?.state())
   }
 
-  pub async fn boot_server(&self) -> Result<(), Box<dyn ThreadSafeError>> {
+  async fn boot_server(&self) -> Result<(), Box<dyn ThreadSafeError>> {
     {
-      let guard = self.mc_server_status_guard().await?;
+      let guard = self.server_status_guard().await?;
       if guard.state != ServerState::Off {
         return Err(
           McError::InvalidOp(format!("Can't turn server on in {:?} state", guard.state)).into(),
@@ -110,7 +126,7 @@ impl SystemctlServerController {
 
     let exit_status = systemctl::start(MC_SERVER_SERVICE).await?;
     if exit_status.success() {
-      let mut guard = self.mc_server_status_guard().await?;
+      let mut guard = self.server_status_guard().await?;
       guard.begin_boot();
       Ok(())
     } else {
@@ -118,18 +134,8 @@ impl SystemctlServerController {
     }
   }
 
-  async fn await_server_shutdown(&self) -> Result<(), Box<dyn ThreadSafeError>> {
-    let exit_status = systemctl::stop(MC_SERVER_SERVICE).await?;
-    if exit_status.success() {
-      self.mc_server_status_guard().await?.complete_shutdown();
-    } else {
-      self.mc_server_status_guard().await?.abort_shutdown();
-    }
-    Ok(())
-  }
-
-  pub async fn shutdown_server(&'static self) -> Result<(), Box<dyn ThreadSafeError>> {
-    let mut guard = self.mc_server_status_guard().await?;
+  async fn shutdown_server(&'static self) -> Result<(), Box<dyn ThreadSafeError>> {
+    let mut guard = self.server_status_guard().await?;
     if guard.state != ServerState::On {
       return Err(
         McError::InvalidOp(format!("Can't turn server off in {:?} state", guard.state)).into(),

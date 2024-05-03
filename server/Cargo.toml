@@ -20,6 +20,7 @@ strum = { version = "0.26.2" }
 strum_macros = "0.26.2"
 itertools = "0.12.1"
 lazy_static = "1.4.0"
+async-trait = "0.1.80"
 
 [build-dependencies]
 prost-build = "0.12.4"

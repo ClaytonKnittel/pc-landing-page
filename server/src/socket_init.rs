@@ -9,7 +9,9 @@ use serde::Deserialize;
 use tokio::task::JoinHandle;
 
 use crate::{
-  controller::systemctl_server_controller::SystemctlServerController,
+  controller::{
+    controller::ServerController, systemctl_server_controller::SystemctlServerController,
+  },
   proto::ServerState,
   security::{CERTFILE, KEYFILE},
 };
@@ -47,11 +49,12 @@ async fn handle_call_event(
   _context: AsyncSocketContext<ServerEmitEvents>,
 ) -> Status<ToClientResponses> {
   lazy_static! {
-    static ref SERVER_CONTROLLER: SystemctlServerController = SystemctlServerController::new();
+    static ref SERVER_CONTROLLER: Box<dyn ServerController + Send + Sync> =
+      Box::new(SystemctlServerController::new());
   };
 
   match event {
-    FromClientRequests::McServerStatus {} => match SERVER_CONTROLLER.mc_server_state().await {
+    FromClientRequests::McServerStatus {} => match SERVER_CONTROLLER.server_state().await {
       Ok(state) => Status::Ok(ToClientResponses::McServerStatus { state }),
       Err(_) => Status::InternalServerError("Failed to read MC server status".into()),
     },
