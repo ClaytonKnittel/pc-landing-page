@@ -4,8 +4,11 @@ use crate::{
   systemctl::{self, Unit},
 };
 use async_trait::async_trait;
-use std::time::{Duration, Instant};
-use tokio::sync::{Mutex, MutexGuard};
+use std::time::Duration;
+use tokio::{
+  sync::{Mutex, MutexGuard},
+  time::Instant,
+};
 
 use super::controller_interface::ServerController;
 
