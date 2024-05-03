@@ -30,6 +30,11 @@ struct Args {
 
   #[arg(long, default_value_t = false)]
   prod: bool,
+
+  /// When passed to the program, runs a simulated Minecraft server instead of
+  /// running the systemctl service.
+  #[arg(long, default_value_t = false)]
+  simulated: bool,
 }
 
 #[tokio::main]
@@ -48,7 +53,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
   match tokio::join!(
     run_file_server(args.prod, fs_addr),
-    create_socket_endpoint(args.prod, ws_addr)
+    create_socket_endpoint(args.prod, ws_addr, args.simulated)
   ) {
     (Err(err), _) | (_, Err(err)) => Err(err.into()),
     (Ok(()), Ok(())) => Ok(()),

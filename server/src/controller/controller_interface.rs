@@ -11,6 +11,6 @@ pub trait ServerController {
   async fn boot_server(&self) -> Result<(), Box<dyn ThreadSafeError>>;
 
   /// Triggers a server shutdown, which will attempt to turn off the Minecraft
-  /// server. Returns upon shutdown triggering.
-  async fn shutdown_server(&'static self) -> Result<(), Box<dyn ThreadSafeError>>;
+  /// server. Returns upon shutdown completing, which may take a while.
+  async fn shutdown_server(&self) -> Result<(), Box<dyn ThreadSafeError>>;
 }

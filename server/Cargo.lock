@@ -945,7 +945,6 @@ dependencies = [
  "clap",
  "futures-util",
  "itertools",
- "lazy_static",
  "pretty_env_logger",
  "prost",
  "prost-build",

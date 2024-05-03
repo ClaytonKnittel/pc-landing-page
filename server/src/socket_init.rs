@@ -1,20 +1,36 @@
-use std::{net::SocketAddr, time::Duration};
+use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use async_sockets::{
   AsyncSocket, AsyncSocketContext, AsyncSocketEmitters, AsyncSocketListeners, AsyncSocketOptions,
   AsyncSocketResponders, AsyncSocketSecurity, Status,
 };
-use lazy_static::lazy_static;
 use serde::Deserialize;
 use tokio::task::JoinHandle;
 
 use crate::{
   controller::{
-    controller::ServerController, systemctl_server_controller::SystemctlServerController,
+    controller_interface::ServerController, sim_server_controller::SimServerController,
+    systemctl_server_controller::SystemctlServerController,
   },
   proto::ServerState,
   security::{CERTFILE, KEYFILE},
 };
+
+struct Globals {
+  server_controller: Box<dyn ServerController + Send + Sync>,
+}
+
+impl Globals {
+  fn new(sim: bool) -> Self {
+    let server_controller = if sim {
+      Box::new(SimServerController::new()) as Box<dyn ServerController + Send + Sync>
+    } else {
+      Box::new(SystemctlServerController::new())
+    };
+
+    Self { server_controller }
+  }
+}
 
 #[derive(AsyncSocketEmitters)]
 enum ServerEmitEvents {}
@@ -47,25 +63,23 @@ async fn handle_connect_event(_context: AsyncSocketContext<ServerEmitEvents>) {}
 async fn handle_call_event(
   event: FromClientRequests,
   _context: AsyncSocketContext<ServerEmitEvents>,
+  globals: Arc<Globals>,
 ) -> Status<ToClientResponses> {
-  lazy_static! {
-    static ref SERVER_CONTROLLER: Box<dyn ServerController + Send + Sync> =
-      Box::new(SystemctlServerController::new());
-  };
-
   match event {
-    FromClientRequests::McServerStatus {} => match SERVER_CONTROLLER.server_state().await {
+    FromClientRequests::McServerStatus {} => match globals.server_controller.server_state().await {
       Ok(state) => Status::Ok(ToClientResponses::McServerStatus { state }),
       Err(_) => Status::InternalServerError("Failed to read MC server status".into()),
     },
-    FromClientRequests::BootServer {} => match SERVER_CONTROLLER.boot_server().await {
+    FromClientRequests::BootServer {} => match globals.server_controller.boot_server().await {
       Ok(()) => Status::Ok(ToClientResponses::BootServer {}),
       Err(err) => Status::InternalServerError(format!("Failed to boot server: {err}")),
     },
-    FromClientRequests::ShutdownServer {} => match SERVER_CONTROLLER.shutdown_server().await {
-      Ok(()) => Status::Ok(ToClientResponses::ShutdownServer {}),
-      Err(err) => Status::InternalServerError(format!("Failed to boot server: {err}")),
-    },
+    FromClientRequests::ShutdownServer {} => {
+      match globals.server_controller.shutdown_server().await {
+        Ok(()) => Status::Ok(ToClientResponses::ShutdownServer {}),
+        Err(err) => Status::InternalServerError(format!("Failed to boot server: {err}")),
+      }
+    }
   }
 }
 
@@ -76,7 +90,7 @@ async fn handle_emit_event(
   match event {}
 }
 
-pub fn create_socket_endpoint(prod: bool, addr: SocketAddr) -> JoinHandle<()> {
+pub fn create_socket_endpoint(prod: bool, addr: SocketAddr, sim: bool) -> JoinHandle<()> {
   let options = AsyncSocketOptions::new()
     .with_path("horsney")
     .with_bind_addr(addr)
@@ -92,6 +106,8 @@ pub fn create_socket_endpoint(prod: bool, addr: SocketAddr) -> JoinHandle<()> {
     options
   };
 
+  let globals = Arc::new(Globals::new(sim));
+
   tokio::spawn(async move {
     println!(
       "Starting server on {}://{addr}",
@@ -101,7 +117,7 @@ pub fn create_socket_endpoint(prod: bool, addr: SocketAddr) -> JoinHandle<()> {
       options,
       handle_connect_event,
       handle_emit_event,
-      handle_call_event,
+      move |event, context| handle_call_event(event, context, globals.clone()),
     )
     .start_server()
     .await
