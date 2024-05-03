@@ -4,11 +4,12 @@ use async_sockets::{
   AsyncSocket, AsyncSocketContext, AsyncSocketEmitters, AsyncSocketListeners, AsyncSocketOptions,
   AsyncSocketResponders, AsyncSocketSecurity, Status,
 };
+use lazy_static::lazy_static;
 use serde::Deserialize;
 use tokio::task::JoinHandle;
 
 use crate::{
-  mc_server::{boot_server, mc_server_state, shutdown_server},
+  mc_server::SystemctlServerController,
   proto::ServerState,
   security::{CERTFILE, KEYFILE},
 };
@@ -45,16 +46,20 @@ async fn handle_call_event(
   event: FromClientRequests,
   _context: AsyncSocketContext<ServerEmitEvents>,
 ) -> Status<ToClientResponses> {
+  lazy_static! {
+    static ref SERVER_CONTROLLER: SystemctlServerController = SystemctlServerController::new();
+  };
+
   match event {
-    FromClientRequests::McServerStatus {} => match mc_server_state().await {
+    FromClientRequests::McServerStatus {} => match SERVER_CONTROLLER.mc_server_state().await {
       Ok(state) => Status::Ok(ToClientResponses::McServerStatus { state }),
       Err(_) => Status::InternalServerError("Failed to read MC server status".into()),
     },
-    FromClientRequests::BootServer {} => match boot_server().await {
+    FromClientRequests::BootServer {} => match SERVER_CONTROLLER.boot_server().await {
       Ok(()) => Status::Ok(ToClientResponses::BootServer {}),
       Err(err) => Status::InternalServerError(format!("Failed to boot server: {err}")),
     },
-    FromClientRequests::ShutdownServer {} => match shutdown_server().await {
+    FromClientRequests::ShutdownServer {} => match SERVER_CONTROLLER.shutdown_server().await {
       Ok(()) => Status::Ok(ToClientResponses::ShutdownServer {}),
       Err(err) => Status::InternalServerError(format!("Failed to boot server: {err}")),
     },
