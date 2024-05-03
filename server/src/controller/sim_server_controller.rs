@@ -1,4 +1,7 @@
-use crate::{error::ThreadSafeError, proto::ServerState};
+use crate::{
+  error::{McError, ThreadSafeError},
+  proto::ServerState,
+};
 use async_trait::async_trait;
 
 use super::controller_interface::ServerController;
@@ -18,14 +21,14 @@ impl SimServerController {
 #[async_trait]
 impl ServerController for SimServerController {
   async fn server_state(&self) -> Result<ServerState, Box<dyn ThreadSafeError>> {
-    todo!();
+    Ok(self.state)
   }
 
   async fn boot_server(&self) -> Result<(), Box<dyn ThreadSafeError>> {
-    todo!();
+    Err(McError::InvalidOp("Unimplemented!".to_string()).into())
   }
 
   async fn shutdown_server(&self) -> Result<(), Box<dyn ThreadSafeError>> {
-    todo!();
+    Err(McError::InvalidOp("Unimplemented!".to_string()).into())
   }
 }
