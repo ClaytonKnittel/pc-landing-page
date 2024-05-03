@@ -9,7 +9,7 @@ use serde::Deserialize;
 use tokio::task::JoinHandle;
 
 use crate::{
-  mc_server::SystemctlServerController,
+  controller::systemctl_server_controller::SystemctlServerController,
   proto::ServerState,
   security::{CERTFILE, KEYFILE},
 };

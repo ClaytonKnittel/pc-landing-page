@@ -8,8 +8,8 @@ use static_file_server::run_file_server;
 
 use crate::socket_init::create_socket_endpoint;
 
+mod controller;
 mod error;
-mod mc_server;
 mod proto;
 mod security;
 mod socket_init;
