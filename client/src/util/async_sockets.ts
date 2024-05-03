@@ -223,11 +223,11 @@ export class AsyncSocketContext<
     ResponseMessageInfo<ListenEvents, EmitEvents, never>
   >;
 
-  constructor(url: string, verbose?: boolean) {
+  constructor(url: string, verbose?: boolean, timeout?: number) {
     this.url = url;
     this.socket = new WebSocket(url);
     this.isOpen = false;
-    this.timeout = 1000;
+    this.timeout = timeout ?? 1000;
     this.verbose = verbose ?? false;
     this.initializeWebSocket();
 
@@ -315,6 +315,7 @@ export class AsyncSocketContext<
         ListenEvents
       >
     );
+    this.outstanding_calls.delete(uuid);
   }
 
   private async onMessage(event: MessageEvent) {
@@ -404,6 +405,10 @@ export class AsyncSocketContext<
     callback: (response: ResponseStatus<EventName, ListenEvents>) => void
   ): NodeJS.Timeout {
     return setTimeout(() => {
+      if (this.verbose) {
+        console.log(`Timeout message ${uuid}`);
+      }
+
       this.outstanding_calls.delete(uuid);
 
       callback(
@@ -446,13 +451,12 @@ export class AsyncSocketContext<
     eventName: EventName,
     ...args: ReqParams<EventName, EmitEvents>
   ): Promise<ResponseStatus<EventName, ListenEvents>> {
-    if (this.verbose) {
-      console.log(`calling ${eventName} with`, args);
-    }
-
     return new Promise((resolve) => {
       const uuid = uuidv4();
       const timeoutId = this.addTimeout(eventName, uuid, this.timeout, resolve);
+      if (this.verbose) {
+        console.log(`calling ${eventName} (${uuid}) with`, args);
+      }
 
       this.outstanding_calls.set(uuid, { timeoutId, resolve });
 

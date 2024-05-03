@@ -77,14 +77,19 @@ export function ServerButton(props: ServerButtonProps) {
                 if (stateRef.current === ServerState.OFF) {
                   setStateRef.current(ServerState.BOOTING);
                 }
+              } else {
+                console.error(`Error: ${status.status} ${status.message}`);
               }
             });
           } else if (state === ServerState.ON) {
+            setState(ServerState.SHUTDOWN);
             props.socket.call('shutdown_server').then((status) => {
               if (isOk(status)) {
-                if (stateRef.current === ServerState.ON) {
-                  setStateRef.current(ServerState.SHUTDOWN);
+                if (stateRef.current === ServerState.SHUTDOWN) {
+                  setStateRef.current(ServerState.OFF);
                 }
+              } else {
+                console.error(`Error: ${status.status} ${status.message}`);
               }
             });
           }

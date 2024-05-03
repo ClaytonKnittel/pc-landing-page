@@ -9,7 +9,8 @@ const socket: ServerSocket = new AsyncSocketContext(
   `${inSecureEnvironment() ? 'wss' : 'ws'}://${
     window.location.hostname
   }:2345/horsney`,
-  true
+  true,
+  20 * 1000
 );
 
 export function App() {
