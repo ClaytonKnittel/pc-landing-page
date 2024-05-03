@@ -4,17 +4,9 @@ use std::{
 };
 
 use clap::Parser;
-use static_file_server::run_file_server;
-
-use crate::socket_init::create_socket_endpoint;
-
-mod controller;
-mod error;
-mod proto;
-mod security;
-mod socket_init;
-mod static_file_server;
-mod systemctl;
+use pc_landing_page::{
+  error::ThreadSafeError, socket_init::create_socket_endpoint, static_file_server::run_file_server,
+};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -38,7 +30,7 @@ struct Args {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn main() -> Result<(), Box<dyn ThreadSafeError>> {
   pretty_env_logger::init();
   let args = Args::parse();
 
@@ -53,7 +45,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
   match tokio::join!(
     run_file_server(args.prod, fs_addr),
-    create_socket_endpoint(args.prod, ws_addr, args.simulated)
+    create_socket_endpoint(args.prod, ws_addr, args.simulated).await?
   ) {
     (Err(err), _) | (_, Err(err)) => Err(err.into()),
     (Ok(()), Ok(())) => Ok(()),

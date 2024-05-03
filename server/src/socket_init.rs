@@ -12,23 +12,29 @@ use crate::{
     controller_interface::ServerController, sim_server_controller::SimServerController,
     systemctl_server_controller::SystemctlServerController,
   },
+  error::ThreadSafeError,
   proto::ServerState,
   security::{CERTFILE, KEYFILE},
+  systemctl::sys_unit::SysUnit,
 };
+
+const MC_SERVER_SERVICE: &str = "mc_server.service";
 
 struct Globals {
   server_controller: Box<dyn ServerController + Send + Sync>,
 }
 
 impl Globals {
-  fn new(sim: bool) -> Self {
+  async fn new(sim: bool) -> Result<Self, Box<dyn ThreadSafeError>> {
     let server_controller = if sim {
       Box::new(SimServerController::new()) as Box<dyn ServerController + Send + Sync>
     } else {
-      Box::new(SystemctlServerController::new())
+      Box::new(SystemctlServerController::new(
+        SysUnit::from_systemctl(MC_SERVER_SERVICE).await?,
+      ))
     };
 
-    Self { server_controller }
+    Ok(Self { server_controller })
   }
 }
 
@@ -90,7 +96,11 @@ async fn handle_emit_event(
   match event {}
 }
 
-pub fn create_socket_endpoint(prod: bool, addr: SocketAddr, sim: bool) -> JoinHandle<()> {
+pub async fn create_socket_endpoint(
+  prod: bool,
+  addr: SocketAddr,
+  sim: bool,
+) -> Result<JoinHandle<()>, Box<dyn ThreadSafeError>> {
   let options = AsyncSocketOptions::new()
     .with_path("horsney")
     .with_bind_addr(addr)
@@ -106,9 +116,9 @@ pub fn create_socket_endpoint(prod: bool, addr: SocketAddr, sim: bool) -> JoinHa
     options
   };
 
-  let globals = Arc::new(Globals::new(sim));
+  let globals = Arc::new(Globals::new(sim).await?);
 
-  tokio::spawn(async move {
+  Ok(tokio::spawn(async move {
     println!(
       "Starting server on {}://{addr}",
       if prod { "wss" } else { "ws" }
@@ -121,5 +131,5 @@ pub fn create_socket_endpoint(prod: bool, addr: SocketAddr, sim: bool) -> JoinHa
     )
     .start_server()
     .await
-  })
+  }))
 }
