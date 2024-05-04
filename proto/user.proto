@@ -1,0 +1,15 @@
+syntax = "proto2";
+
+package user.proto;
+
+// Metadata about users. Username is implicit from the key of the users map in
+// `UserMap`.
+message User {
+  // The user's password. Case sensitive.
+  optional string password = 1;
+}
+
+message UserMap {
+  // A map from usernames to metadata about each user.
+  map<string, User> users = 1;
+}

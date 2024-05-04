@@ -1,6 +1,7 @@
 use serde::{de, Deserialize, Serialize};
 
 include!(concat!(env!("OUT_DIR"), "/mc_server.proto.rs"));
+include!(concat!(env!("OUT_DIR"), "/user.proto.rs"));
 
 impl Serialize for ServerState {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
