@@ -1,7 +1,7 @@
 use crate::{
   error::{McError, ThreadSafeError},
   proto::ServerState,
-  systemctl::{self, unit::Unit},
+  systemctl::unit::Unit,
 };
 use async_trait::async_trait;
 use std::time::Duration;
@@ -70,7 +70,7 @@ where
     self.unit.refresh().await?;
     self.last_updated = now;
 
-    self.state = match (self.state, self.unit.is_active().await) {
+    self.state = match (self.state, self.unit.is_active()) {
       (ServerState::Shutdown, _) => ServerState::Shutdown,
       (ServerState::Booting, false) => ServerState::Booting,
       (_, false) => ServerState::Off,
@@ -121,7 +121,7 @@ where
   }
 
   async fn boot_server(&self) -> Result<(), Box<dyn ThreadSafeError>> {
-    let name = {
+    let boot_fut = {
       let mut guard = self.server_status_guard().await?;
       if guard.state != ServerState::Off {
         return Err(
@@ -129,11 +129,10 @@ where
         );
       }
       guard.begin_boot();
-      guard.unit.name().to_owned()
+      guard.unit().start()
     };
 
-    // TODO: remove this dependency
-    let exit_status = systemctl::commands::start(&name).await?;
+    let exit_status = boot_fut.await?;
     if exit_status.success() {
       Ok(())
     } else {
@@ -144,7 +143,7 @@ where
   }
 
   async fn shutdown_server(&self) -> Result<(), Box<dyn ThreadSafeError>> {
-    let name = {
+    let shutdown_fut = {
       let mut guard = self.server_status_guard().await?;
       if guard.state != ServerState::On {
         return Err(
@@ -152,11 +151,10 @@ where
         );
       }
       guard.begin_shutdown();
-      guard.unit.name().to_owned()
+      guard.unit().stop()
     };
 
-    // TODO: remove this dependency
-    let exit_status = systemctl::commands::stop(&name).await?;
+    let exit_status = shutdown_fut.await?;
     if exit_status.success() {
       self.server_status_guard().await?.complete_shutdown();
       Ok(())

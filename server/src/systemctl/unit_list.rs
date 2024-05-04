@@ -3,8 +3,8 @@ use super::commands::systemctl_capture;
 /// Returns `true` if given `unit` exists,
 /// ie., service could be or is actively deployed
 /// and manageable by systemd
-pub async fn exists(unit: &str) -> std::io::Result<bool> {
-  let unit_list = list_units(None, None, Some(unit)).await?;
+pub async fn exists(unit: String) -> std::io::Result<bool> {
+  let unit_list = list_units(None, None, Some(&unit)).await?;
   Ok(!unit_list.is_empty())
 }
 

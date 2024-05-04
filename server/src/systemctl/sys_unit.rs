@@ -8,13 +8,17 @@ use super::{
   commands::*,
   unit::{AutoStartStatus, Doc, State, Type, Unit},
   unit_list::exists,
+  util::ThreadSafeFuture,
 };
 use async_trait::async_trait;
+use futures_util::Future;
 
 /// Structure to describe a systemd `unit`
 #[derive(Clone, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct SysUnit {
+  /// Unit full name
+  pub full_name: String,
   /// Unit name
   pub name: String,
   /// Unit type
@@ -80,15 +84,15 @@ pub struct SysUnit {
 impl SysUnit {
   /// Builds a new `Unit` structure by retrieving
   /// structure attributes with a `systemctl status $unit` call
-  pub async fn from_systemctl(name: &str) -> std::io::Result<SysUnit> {
-    if let Ok(false) = exists(name).await {
+  pub async fn from_systemctl(full_name: &str) -> std::io::Result<SysUnit> {
+    if let Ok(false) = exists(full_name.to_string()).await {
       return Err(Error::new(
         ErrorKind::NotFound,
-        format!("Unit or service \"{}\" does not exist", name),
+        format!("Unit or service \"{}\" does not exist", full_name),
       ));
     }
     let mut u = SysUnit::default();
-    let status = status(name).await?;
+    let status = status(full_name.to_string()).await?;
     let mut lines = status.lines();
     let next = lines.next().unwrap();
     let (_, rem) = next.split_at(3);
@@ -190,7 +194,7 @@ impl SysUnit {
       }
     }
 
-    if let Ok(content) = cat(name).await {
+    if let Ok(content) = cat(name.to_string()).await {
       let line_tuple = content
         .lines()
         .filter_map(|line| line.split_once('=').to_owned());
@@ -211,7 +215,8 @@ impl SysUnit {
       }
     }
 
-    u.active = is_active(name).await?;
+    u.active = is_active(name.to_string()).await?;
+    u.full_name = full_name.to_string();
     u.name = name.to_string();
     Ok(u)
   }
@@ -224,79 +229,79 @@ impl Unit for SysUnit {
   }
 
   async fn refresh(&mut self) -> std::io::Result<()> {
-    *self = Self::from_systemctl(&self.name).await?;
+    *self = Self::from_systemctl(&self.full_name).await?;
     Ok(())
   }
 
   /// Restarts Self by invoking `systemctl`
-  async fn restart(&self) -> std::io::Result<ExitStatus> {
-    restart(&self.name).await
+  fn restart(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>> {
+    restart(self.name.clone())
   }
 
   /// Starts Self by invoking `systemctl`
-  async fn start(&self) -> std::io::Result<ExitStatus> {
-    start(&self.name).await
+  fn start(&self) -> impl Future<Output = std::io::Result<ExitStatus>> + Send + Sync + 'static {
+    start(self.name.clone())
   }
 
   /// Stops Self by invoking `systemctl`
-  async fn stop(&self) -> std::io::Result<ExitStatus> {
-    stop(&self.name).await
+  fn stop(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>> {
+    stop(self.name.clone())
   }
 
   /// Reloads Self by invoking systemctl
-  async fn reload(&self) -> std::io::Result<ExitStatus> {
-    reload(&self.name).await
+  fn reload(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>> {
+    reload(self.name.clone())
   }
 
   /// Reloads or restarts Self by invoking systemctl
-  async fn reload_or_restart(&self) -> std::io::Result<ExitStatus> {
-    reload_or_restart(&self.name).await
+  fn reload_or_restart(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>> {
+    reload_or_restart(self.name.clone())
   }
 
   /// Enable Self to start at boot
-  async fn enable(&self) -> std::io::Result<ExitStatus> {
-    enable(&self.name).await
+  fn enable(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>> {
+    enable(self.name.clone())
   }
 
   /// Disable Self to start at boot
-  async fn disable(&self) -> std::io::Result<ExitStatus> {
-    disable(&self.name).await
+  fn disable(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>> {
+    disable(self.name.clone())
   }
 
   /// Returns verbose status for Self
-  async fn status(&self) -> std::io::Result<String> {
-    status(&self.name).await
+  fn status(&self) -> impl ThreadSafeFuture<Output = std::io::Result<String>> {
+    status(self.name.clone())
   }
 
   /// Returns `true` if Self is actively running
-  async fn is_active(&self) -> bool {
+  fn is_active(&self) -> bool {
     self.active
   }
 
   /// `Isolate` Self, meaning stops all other units but
   /// self and its dependencies
-  async fn isolate(&self) -> std::io::Result<ExitStatus> {
-    isolate(&self.name).await
+  fn isolate(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>> {
+    isolate(self.name.clone())
   }
 
   /// `Freezes` Self, halts self and CPU load will
   /// no longer be dedicated to its execution.
   /// This operation might not be feasible.
   /// `unfreeze()` is the mirror operation
-  async fn freeze(&self) -> std::io::Result<ExitStatus> {
-    freeze(&self.name).await
+  fn freeze(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>> {
+    freeze(self.name.clone())
   }
 
   /// `Unfreezes` Self, exists halted state.
   /// This operation might not be feasible.
-  async fn unfreeze(&self) -> std::io::Result<ExitStatus> {
-    unfreeze(&self.name).await
+  fn unfreeze(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>> {
+    unfreeze(self.name.clone())
   }
 
   /// Returns `true` if given `unit` exists,
   /// ie., service could be or is actively deployed
   /// and manageable by systemd
-  async fn exists(&self) -> std::io::Result<bool> {
-    exists(&self.name).await
+  fn exists(&self) -> impl ThreadSafeFuture<Output = std::io::Result<bool>> {
+    exists(self.name.clone())
   }
 }

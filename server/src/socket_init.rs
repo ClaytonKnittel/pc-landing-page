@@ -74,7 +74,7 @@ async fn handle_call_event(
   match event {
     FromClientRequests::McServerStatus {} => match globals.server_controller.server_state().await {
       Ok(state) => Status::Ok(ToClientResponses::McServerStatus { state }),
-      Err(_) => Status::InternalServerError("Failed to read MC server status".into()),
+      Err(err) => Status::InternalServerError(format!("Failed to read MC server status: {err}")),
     },
     FromClientRequests::BootServer {} => match globals.server_controller.boot_server().await {
       Ok(()) => Status::Ok(ToClientResponses::BootServer {}),

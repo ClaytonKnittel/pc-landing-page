@@ -6,6 +6,8 @@ use async_trait::async_trait;
 use std::{io::ErrorKind, process::ExitStatus};
 use strum_macros::EnumString;
 
+use super::util::ThreadSafeFuture;
+
 /// `AutoStartStatus` describes the Unit current state
 #[derive(Copy, Clone, PartialEq, Eq, EnumString, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -124,42 +126,42 @@ pub trait Unit {
   /// Updates the `Unit` by rereading its state.
   async fn refresh(&mut self) -> std::io::Result<()>;
 
-  async fn restart(&self) -> std::io::Result<ExitStatus>;
+  fn restart(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>>;
 
-  async fn start(&self) -> std::io::Result<ExitStatus>;
+  fn start(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>>;
 
-  async fn stop(&self) -> std::io::Result<ExitStatus>;
+  fn stop(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>>;
 
-  async fn reload(&self) -> std::io::Result<ExitStatus>;
+  fn reload(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>>;
 
-  async fn reload_or_restart(&self) -> std::io::Result<ExitStatus>;
+  fn reload_or_restart(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>>;
 
   /// Enable Self to start at boot
-  async fn enable(&self) -> std::io::Result<ExitStatus>;
+  fn enable(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>>;
 
   /// Disable Self to start at boot
-  async fn disable(&self) -> std::io::Result<ExitStatus>;
+  fn disable(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>>;
 
   /// Returns verbose status for Self
-  async fn status(&self) -> std::io::Result<String>;
+  fn status(&self) -> impl ThreadSafeFuture<Output = std::io::Result<String>>;
 
   /// Returns `true` if Self is actively running
-  async fn is_active(&self) -> bool;
+  fn is_active(&self) -> bool;
 
   /// `Isolate` Self, meaning stops all other units but self and its
   /// dependencies
-  async fn isolate(&self) -> std::io::Result<ExitStatus>;
+  fn isolate(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>>;
 
   /// `Freezes` Self, halts self and CPU load will no longer be dedicated to
   /// its execution.  This operation might not be feasible.  `unfreeze()` is
   /// the mirror operation
-  async fn freeze(&self) -> std::io::Result<ExitStatus>;
+  fn freeze(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>>;
 
   /// `Unfreezes` Self, exists halted state.  This operation might not be
   /// feasible.
-  async fn unfreeze(&self) -> std::io::Result<ExitStatus>;
+  fn unfreeze(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>>;
 
   /// Returns `true` if given `unit` exists, ie., service could be or is
   /// actively deployed and manageable by systemd
-  async fn exists(&self) -> std::io::Result<bool>;
+  fn exists(&self) -> impl ThreadSafeFuture<Output = std::io::Result<bool>>;
 }

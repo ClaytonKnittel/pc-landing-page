@@ -75,70 +75,70 @@ pub async fn systemctl_capture(args: Vec<&str>) -> std::io::Result<String> {
 }
 
 /// Forces given `unit` to (re)start
-pub async fn restart(unit: &str) -> std::io::Result<ExitStatus> {
-  systemctl(vec!["restart", unit]).await
+pub async fn restart(unit: String) -> std::io::Result<ExitStatus> {
+  systemctl(vec!["restart", &unit]).await
 }
 
 /// Forces given `unit` to start
-pub async fn start(unit: &str) -> std::io::Result<ExitStatus> {
-  systemctl(vec!["start", unit]).await
+pub async fn start(unit: String) -> std::io::Result<ExitStatus> {
+  systemctl(vec!["start", &unit]).await
 }
 
 /// Forces given `unit` to stop
-pub async fn stop(unit: &str) -> std::io::Result<ExitStatus> {
-  systemctl(vec!["stop", unit]).await
+pub async fn stop(unit: String) -> std::io::Result<ExitStatus> {
+  systemctl(vec!["stop", &unit]).await
 }
 
 /// Triggers reload for given `unit`
-pub async fn reload(unit: &str) -> std::io::Result<ExitStatus> {
-  systemctl(vec!["reload", unit]).await
+pub async fn reload(unit: String) -> std::io::Result<ExitStatus> {
+  systemctl(vec!["reload", &unit]).await
 }
 
 /// Triggers reload or restarts given `unit`
-pub async fn reload_or_restart(unit: &str) -> std::io::Result<ExitStatus> {
-  systemctl(vec!["reload-or-restart", unit]).await
+pub async fn reload_or_restart(unit: String) -> std::io::Result<ExitStatus> {
+  systemctl(vec!["reload-or-restart", &unit]).await
 }
 
 /// Enable given `unit` to start at boot
-pub async fn enable(unit: &str) -> std::io::Result<ExitStatus> {
-  systemctl(vec!["enable", unit]).await
+pub async fn enable(unit: String) -> std::io::Result<ExitStatus> {
+  systemctl(vec!["enable", &unit]).await
 }
 
 /// Disable given `unit` to start at boot
-pub async fn disable(unit: &str) -> std::io::Result<ExitStatus> {
-  systemctl(vec!["disable", unit]).await
+pub async fn disable(unit: String) -> std::io::Result<ExitStatus> {
+  systemctl(vec!["disable", &unit]).await
 }
 
 /// Returns raw status from `systemctl status $unit` call
-pub async fn status(unit: &str) -> std::io::Result<String> {
-  systemctl_capture(vec!["status", unit]).await
+pub async fn status(unit: String) -> std::io::Result<String> {
+  systemctl_capture(vec!["status", &unit]).await
 }
 
 /// Invokes systemctl `cat` on given `unit`
-pub async fn cat(unit: &str) -> std::io::Result<String> {
-  systemctl_capture(vec!["cat", unit]).await
+pub async fn cat(unit: String) -> std::io::Result<String> {
+  systemctl_capture(vec!["cat", &unit]).await
 }
 
 /// Returns `true` if given `unit` is actively running
-pub async fn is_active(unit: &str) -> std::io::Result<bool> {
-  let status = systemctl_capture(vec!["is-active", unit]).await?;
+pub async fn is_active(unit: String) -> std::io::Result<bool> {
+  let status = systemctl_capture(vec!["is-active", &unit]).await?;
   Ok(status.trim_end().eq("active"))
 }
 
 /// Isolates given unit, only self and its dependencies are
 /// now actively running
-pub async fn isolate(unit: &str) -> std::io::Result<ExitStatus> {
-  systemctl(vec!["isolate", unit]).await
+pub async fn isolate(unit: String) -> std::io::Result<ExitStatus> {
+  systemctl(vec!["isolate", &unit]).await
 }
 
 /// Freezes (halts) given unit.
 /// This operation might not be feasible.
-pub async fn freeze(unit: &str) -> std::io::Result<ExitStatus> {
-  systemctl(vec!["freeze", unit]).await
+pub async fn freeze(unit: String) -> std::io::Result<ExitStatus> {
+  systemctl(vec!["freeze", &unit]).await
 }
 
 /// Unfreezes given unit (recover from halted state).
 /// This operation might not be feasible.
-pub async fn unfreeze(unit: &str) -> std::io::Result<ExitStatus> {
-  systemctl(vec!["thaw", unit]).await
+pub async fn unfreeze(unit: String) -> std::io::Result<ExitStatus> {
+  systemctl(vec!["thaw", &unit]).await
 }
