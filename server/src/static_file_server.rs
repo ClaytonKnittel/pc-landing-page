@@ -9,20 +9,21 @@ use warp::{
 
 use crate::security::{CERTFILE, KEYFILE};
 
-const DIR: &str = "../client/dist/dev/static";
+const DEV_DIR: &str = "../client/dist/dev/static";
+const PROD_DIR: &str = "../client/dist/prod/static";
 
 fn disable_cache(reply: impl Reply) -> impl Reply {
   reply::with_header(reply, "cache_control", HeaderValue::from_static("no-cache"))
 }
 
-pub fn run_file_server(prod: bool, addr: SocketAddr) -> JoinHandle<()> {
+pub fn run_file_server(addr: SocketAddr, prod: bool, client_prod: bool) -> JoinHandle<()> {
   tokio::spawn(async move {
     println!(
       "Starting server on {}{addr}",
       if prod { "https://" } else { "http://" }
     );
 
-    let directory = fs::canonicalize(DIR).unwrap();
+    let directory = fs::canonicalize(if client_prod { PROD_DIR } else { DEV_DIR }).unwrap();
     let route = warp::get().and(warp::fs::dir(directory));
     if prod {
       let server = warp::serve(route);

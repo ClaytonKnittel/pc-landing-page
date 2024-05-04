@@ -20,8 +20,14 @@ struct Args {
   #[arg(long, default_value_t = 2345)]
   ws_port: u16,
 
+  /// When passed to the program, runs on https://.
   #[arg(long, default_value_t = false)]
   prod: bool,
+
+  /// When passed to the program, serves production client code, as opposed to
+  /// the debug build.
+  #[arg(long, default_value_t = false)]
+  client_prod: bool,
 
   /// When passed to the program, runs a simulated Minecraft server instead of
   /// running the systemctl service.
@@ -44,7 +50,7 @@ async fn main() -> Result<(), Box<dyn ThreadSafeError>> {
   let ws_addr = SocketAddr::new(addr, args.ws_port);
 
   match tokio::join!(
-    run_file_server(args.prod, fs_addr),
+    run_file_server(fs_addr, args.prod, args.client_prod),
     create_socket_endpoint(args.prod, ws_addr, args.simulated).await?
   ) {
     (Err(err), _) | (_, Err(err)) => Err(err.into()),
