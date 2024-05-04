@@ -27,6 +27,7 @@ enum ServerEmitEvents {}
 #[derive(AsyncSocketListeners)]
 enum ClientEmitEvents {}
 
+#[allow(dead_code)]
 #[derive(AsyncSocketEmitters)]
 enum ToClientRequests {}
 
