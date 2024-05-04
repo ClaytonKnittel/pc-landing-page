@@ -1,5 +1,7 @@
 use std::{error, fmt::Display, process::ExitStatus};
 
+pub type McResult<T> = Result<T, McError>;
+
 #[derive(Debug)]
 pub enum McError {
   NonzeroExit(ExitStatus),
