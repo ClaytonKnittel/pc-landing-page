@@ -25,6 +25,10 @@ impl UserStore {
   }
 
   pub fn add_user(&mut self, username: String, password: String) -> McResult<()> {
+    if username.is_empty() {
+      return Err(McError::InvalidOp("Cannot have empty username".to_owned()));
+    }
+
     match self.usermap.users.entry(username.clone()) {
       hash_map::Entry::Occupied(_) => Err(McError::InvalidOp(format!(
         "User {username} already exists"
@@ -133,5 +137,55 @@ mod test {
       .password
       .as_ref()
       .is_some_and(|password| password == "bob's password")));
+  }
+
+  #[test]
+  fn test_no_repeat_usernames() {
+    let mut store = UserStore::new();
+    store
+      .add_user("bob".to_owned(), "bob's password".to_owned())
+      .unwrap();
+    store
+      .add_user("bob".to_owned(), "new password".to_owned())
+      .expect_err("Should not be allowed to add existing user");
+    assert_eq!(store.num_users(), 1);
+    assert!(store.find_user("bob").is_some_and(|user| user
+      .password
+      .as_ref()
+      .is_some_and(|password| password == "bob's password")));
+  }
+
+  #[test]
+  fn test_no_empty_username() {
+    let mut store = UserStore::new();
+    store
+      .add_user("".to_owned(), "password".to_owned())
+      .expect_err("Can't add a user with an empty username");
+    assert_eq!(store.num_users(), 0);
+  }
+
+  #[test]
+  fn test_two_users() {
+    let mut store = UserStore::new();
+    store
+      .add_user(
+        "bob vance vance refrigeration".to_owned(),
+        "bob's cold".to_owned(),
+      )
+      .unwrap();
+    store
+      .add_user("joe".to_owned(), "bad password".to_owned())
+      .unwrap();
+    assert_eq!(store.num_users(), 2);
+    assert!(store
+      .find_user("bob vance vance refrigeration")
+      .is_some_and(|user| user
+        .password
+        .as_ref()
+        .is_some_and(|password| password == "bob's cold")));
+    assert!(store.find_user("joe").is_some_and(|user| user
+      .password
+      .as_ref()
+      .is_some_and(|password| password == "bad password")));
   }
 }
