@@ -18,7 +18,7 @@ use crate::{
 const MC_SERVER_SERVICE: &str = "mc_server.service";
 
 struct Globals {
-  server_controller: ServerController<SimUnit>,
+  server_controller: ServerController<Box<dyn Unit + Send + Sync>>,
 }
 
 #[derive(AsyncSocketEmitters)]
@@ -99,21 +99,15 @@ pub async fn create_socket_endpoint(
     options
   };
 
-  // let globals = Arc::new(Globals::new(sim).await?);
-  let globals = if sim {
-    Arc::new(Globals {
-      server_controller: ServerController::new(SimUnit::new(MC_SERVER_SERVICE.to_owned())),
-    })
+  let unit: Box<dyn Unit + Send + Sync> = if sim {
+    Box::new(SimUnit::new(MC_SERVER_SERVICE.to_owned()))
   } else {
-    todo!();
-    // Arc::<Globals<dyn Unit + Sized>>::new(Globals {
-    //   server_controller: ServerController::new(
-    //     SysUnit::from_systemctl(MC_SERVER_SERVICE)
-    //       .await
-    //       .map_err(|e| e.into())?,
-    //   ),
-    // })
+    Box::new(SysUnit::from_systemctl(MC_SERVER_SERVICE).await?)
   };
+
+  let globals = Arc::new(Globals {
+    server_controller: ServerController::new(unit),
+  });
 
   Ok(tokio::spawn(async move {
     println!(

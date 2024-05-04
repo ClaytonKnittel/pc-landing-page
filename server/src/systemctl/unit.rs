@@ -3,6 +3,7 @@
 //! Crate to manage and monitor services through `systemctl`   
 //! Homepage: <https://github.com/gwbres/systemctl>
 use async_trait::async_trait;
+use futures_util::Future;
 use std::{io::ErrorKind, pin::Pin, process::ExitStatus};
 use strum_macros::EnumString;
 
@@ -169,4 +170,77 @@ pub trait Unit {
   /// Returns `true` if given `unit` exists, ie., service could be or is
   /// actively deployed and manageable by systemd
   fn exists(&self) -> AsyncResult<bool>;
+}
+
+#[async_trait]
+impl<U> Unit for Box<U>
+where
+  U: Unit + ?Sized,
+{
+  fn name(&self) -> &str {
+    (**self).name()
+  }
+
+  #[allow(clippy::type_complexity, clippy::type_repetition_in_bounds)]
+  fn refresh<'life0, 'async_trait>(
+    &'life0 mut self,
+  ) -> Pin<Box<dyn Future<Output = Result<(), Box<dyn ThreadSafeError>>> + Send + 'async_trait>>
+  where
+    'life0: 'async_trait,
+    Self: 'async_trait,
+  {
+    (**self).refresh()
+  }
+
+  fn restart(&mut self) -> AsyncResult<ExitStatus> {
+    (**self).restart()
+  }
+
+  fn start(&mut self) -> AsyncResult<ExitStatus> {
+    (**self).start()
+  }
+
+  fn stop(&mut self) -> AsyncResult<ExitStatus> {
+    (**self).stop()
+  }
+
+  fn reload(&mut self) -> AsyncResult<ExitStatus> {
+    (**self).reload()
+  }
+
+  fn reload_or_restart(&mut self) -> AsyncResult<ExitStatus> {
+    (**self).reload_or_restart()
+  }
+
+  fn enable(&mut self) -> AsyncResult<ExitStatus> {
+    (**self).enable()
+  }
+
+  fn disable(&mut self) -> AsyncResult<ExitStatus> {
+    (**self).disable()
+  }
+
+  fn status(&self) -> AsyncResult<String> {
+    (**self).status()
+  }
+
+  fn is_active(&self) -> bool {
+    (**self).is_active()
+  }
+
+  fn isolate(&mut self) -> AsyncResult<ExitStatus> {
+    (**self).isolate()
+  }
+
+  fn freeze(&mut self) -> AsyncResult<ExitStatus> {
+    (**self).freeze()
+  }
+
+  fn unfreeze(&mut self) -> AsyncResult<ExitStatus> {
+    (**self).unfreeze()
+  }
+
+  fn exists(&self) -> AsyncResult<bool> {
+    (**self).exists()
+  }
 }
