@@ -82,7 +82,7 @@ where
 
   async fn maybe_update(&mut self) -> Result<(), Box<dyn ThreadSafeError>> {
     let now = Instant::now();
-    if now < self.last_updated + REFRESH_RATE {
+    if self.state != ServerState::Unknown && now < self.last_updated + REFRESH_RATE {
       return Ok(());
     }
     self.do_update(now).await

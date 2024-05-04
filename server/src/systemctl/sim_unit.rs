@@ -1,8 +1,8 @@
 use std::{os::unix::process::ExitStatusExt, process::ExitStatus, time::Duration};
 
 use async_trait::async_trait;
-use futures_util::future::ready;
-use tokio::time::Instant;
+use futures_util::{future::ready, FutureExt};
+use tokio::time::{sleep, Instant};
 
 use crate::{
   error::{McError, ThreadSafeError},
@@ -67,9 +67,9 @@ impl Unit for SimUnit {
         McError::InvalidOp(format!("Server is not in On state: {:?}", self.state)).into(),
       )));
     }
-    self.state = ServerState::Shutdown;
+    self.state = ServerState::Off;
     self.last_update = Instant::now();
-    Box::pin(ready(Ok(ExitStatus::from_raw(0))))
+    Box::pin(sleep(OP_DELAY).map(|_| Ok(ExitStatus::from_raw(0))))
   }
 
   fn reload(&mut self) -> AsyncResult<ExitStatus> {
