@@ -3,8 +3,10 @@
 //! Crate to manage and monitor services through `systemctl`   
 //! Homepage: <https://github.com/gwbres/systemctl>
 use async_trait::async_trait;
-use std::{io::ErrorKind, process::ExitStatus};
+use std::{io::ErrorKind, pin::Pin, process::ExitStatus};
 use strum_macros::EnumString;
+
+use crate::error::ThreadSafeError;
 
 use super::util::ThreadSafeFuture;
 
@@ -119,49 +121,52 @@ impl std::str::FromStr for Doc {
   }
 }
 
+pub type AsyncResult<T> =
+  Pin<Box<dyn ThreadSafeFuture<Output = Result<T, Box<dyn ThreadSafeError>>>>>;
+
 #[async_trait]
 pub trait Unit {
   fn name(&self) -> &str;
 
   /// Updates the `Unit` by rereading its state.
-  async fn refresh(&mut self) -> std::io::Result<()>;
+  async fn refresh(&mut self) -> Result<(), Box<dyn ThreadSafeError>>;
 
-  fn restart(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>>;
+  fn restart(&mut self) -> AsyncResult<ExitStatus>;
 
-  fn start(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>>;
+  fn start(&mut self) -> AsyncResult<ExitStatus>;
 
-  fn stop(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>>;
+  fn stop(&mut self) -> AsyncResult<ExitStatus>;
 
-  fn reload(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>>;
+  fn reload(&mut self) -> AsyncResult<ExitStatus>;
 
-  fn reload_or_restart(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>>;
+  fn reload_or_restart(&mut self) -> AsyncResult<ExitStatus>;
 
   /// Enable Self to start at boot
-  fn enable(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>>;
+  fn enable(&mut self) -> AsyncResult<ExitStatus>;
 
   /// Disable Self to start at boot
-  fn disable(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>>;
+  fn disable(&mut self) -> AsyncResult<ExitStatus>;
 
   /// Returns verbose status for Self
-  fn status(&self) -> impl ThreadSafeFuture<Output = std::io::Result<String>>;
+  fn status(&self) -> AsyncResult<String>;
 
   /// Returns `true` if Self is actively running
   fn is_active(&self) -> bool;
 
   /// `Isolate` Self, meaning stops all other units but self and its
   /// dependencies
-  fn isolate(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>>;
+  fn isolate(&mut self) -> AsyncResult<ExitStatus>;
 
   /// `Freezes` Self, halts self and CPU load will no longer be dedicated to
   /// its execution.  This operation might not be feasible.  `unfreeze()` is
   /// the mirror operation
-  fn freeze(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>>;
+  fn freeze(&mut self) -> AsyncResult<ExitStatus>;
 
   /// `Unfreezes` Self, exists halted state.  This operation might not be
   /// feasible.
-  fn unfreeze(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>>;
+  fn unfreeze(&mut self) -> AsyncResult<ExitStatus>;
 
   /// Returns `true` if given `unit` exists, ie., service could be or is
   /// actively deployed and manageable by systemd
-  fn exists(&self) -> impl ThreadSafeFuture<Output = std::io::Result<bool>>;
+  fn exists(&self) -> AsyncResult<bool>;
 }

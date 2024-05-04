@@ -4,14 +4,15 @@ use std::{
   str::FromStr,
 };
 
+use crate::error::ThreadSafeError;
+
 use super::{
   commands::*,
-  unit::{AutoStartStatus, Doc, State, Type, Unit},
+  unit::{AsyncResult, AutoStartStatus, Doc, State, Type, Unit},
   unit_list::exists,
-  util::ThreadSafeFuture,
 };
 use async_trait::async_trait;
-use futures_util::Future;
+use futures_util::TryFutureExt;
 
 /// Structure to describe a systemd `unit`
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -228,49 +229,49 @@ impl Unit for SysUnit {
     &self.name
   }
 
-  async fn refresh(&mut self) -> std::io::Result<()> {
+  async fn refresh(&mut self) -> Result<(), Box<dyn ThreadSafeError>> {
     *self = Self::from_systemctl(&self.full_name).await?;
     Ok(())
   }
 
   /// Restarts Self by invoking `systemctl`
-  fn restart(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>> {
-    restart(self.name.clone())
+  fn restart(&mut self) -> AsyncResult<ExitStatus> {
+    Box::pin(restart(self.name.clone()).map_err(|e| e.into()))
   }
 
   /// Starts Self by invoking `systemctl`
-  fn start(&self) -> impl Future<Output = std::io::Result<ExitStatus>> + Send + Sync + 'static {
-    start(self.name.clone())
+  fn start(&mut self) -> AsyncResult<ExitStatus> {
+    Box::pin(start(self.name.clone()).map_err(|e| e.into()))
   }
 
   /// Stops Self by invoking `systemctl`
-  fn stop(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>> {
-    stop(self.name.clone())
+  fn stop(&mut self) -> AsyncResult<ExitStatus> {
+    Box::pin(stop(self.name.clone()).map_err(|e| e.into()))
   }
 
   /// Reloads Self by invoking systemctl
-  fn reload(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>> {
-    reload(self.name.clone())
+  fn reload(&mut self) -> AsyncResult<ExitStatus> {
+    Box::pin(reload(self.name.clone()).map_err(|e| e.into()))
   }
 
   /// Reloads or restarts Self by invoking systemctl
-  fn reload_or_restart(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>> {
-    reload_or_restart(self.name.clone())
+  fn reload_or_restart(&mut self) -> AsyncResult<ExitStatus> {
+    Box::pin(reload_or_restart(self.name.clone()).map_err(|e| e.into()))
   }
 
   /// Enable Self to start at boot
-  fn enable(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>> {
-    enable(self.name.clone())
+  fn enable(&mut self) -> AsyncResult<ExitStatus> {
+    Box::pin(enable(self.name.clone()).map_err(|e| e.into()))
   }
 
   /// Disable Self to start at boot
-  fn disable(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>> {
-    disable(self.name.clone())
+  fn disable(&mut self) -> AsyncResult<ExitStatus> {
+    Box::pin(disable(self.name.clone()).map_err(|e| e.into()))
   }
 
   /// Returns verbose status for Self
-  fn status(&self) -> impl ThreadSafeFuture<Output = std::io::Result<String>> {
-    status(self.name.clone())
+  fn status(&self) -> AsyncResult<String> {
+    Box::pin(status(self.name.clone()).map_err(|e| e.into()))
   }
 
   /// Returns `true` if Self is actively running
@@ -280,28 +281,28 @@ impl Unit for SysUnit {
 
   /// `Isolate` Self, meaning stops all other units but
   /// self and its dependencies
-  fn isolate(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>> {
-    isolate(self.name.clone())
+  fn isolate(&mut self) -> AsyncResult<ExitStatus> {
+    Box::pin(isolate(self.name.clone()).map_err(|e| e.into()))
   }
 
   /// `Freezes` Self, halts self and CPU load will
   /// no longer be dedicated to its execution.
   /// This operation might not be feasible.
   /// `unfreeze()` is the mirror operation
-  fn freeze(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>> {
-    freeze(self.name.clone())
+  fn freeze(&mut self) -> AsyncResult<ExitStatus> {
+    Box::pin(freeze(self.name.clone()).map_err(|e| e.into()))
   }
 
   /// `Unfreezes` Self, exists halted state.
   /// This operation might not be feasible.
-  fn unfreeze(&self) -> impl ThreadSafeFuture<Output = std::io::Result<ExitStatus>> {
-    unfreeze(self.name.clone())
+  fn unfreeze(&mut self) -> AsyncResult<ExitStatus> {
+    Box::pin(unfreeze(self.name.clone()).map_err(|e| e.into()))
   }
 
   /// Returns `true` if given `unit` exists,
   /// ie., service could be or is actively deployed
   /// and manageable by systemd
-  fn exists(&self) -> impl ThreadSafeFuture<Output = std::io::Result<bool>> {
-    exists(self.name.clone())
+  fn exists(&self) -> AsyncResult<bool> {
+    Box::pin(exists(self.name.clone()).map_err(|e| e.into()))
   }
 }

@@ -3,25 +3,22 @@ use crate::{
   proto::ServerState,
   systemctl::unit::Unit,
 };
-use async_trait::async_trait;
 use std::time::Duration;
 use tokio::{
   sync::{Mutex, MutexGuard},
   time::Instant,
 };
 
-use super::controller_interface::ServerController;
-
 const REFRESH_RATE: Duration = Duration::from_secs(5);
 
 #[derive(Debug, Clone)]
-pub struct SystemctlServerStatus<U> {
+pub struct ServerStatus<U> {
   unit: U,
   last_updated: Instant,
   state: ServerState,
 }
 
-impl<U> SystemctlServerStatus<U>
+impl<U> ServerStatus<U>
 where
   U: Unit,
 {
@@ -35,6 +32,10 @@ where
 
   pub fn unit(&self) -> &U {
     &self.unit
+  }
+
+  pub fn unit_mut(&mut self) -> &mut U {
+    &mut self.unit
   }
 
   pub fn state(&mut self) -> ServerState {
@@ -88,39 +89,33 @@ where
   }
 }
 
-pub struct SystemctlServerController<U> {
-  server_status: Mutex<SystemctlServerStatus<U>>,
+pub struct ServerController<U> {
+  server_status: Mutex<ServerStatus<U>>,
 }
 
-impl<U> SystemctlServerController<U>
+impl<U> ServerController<U>
 where
-  U: Unit,
+  U: Unit + Send + Sync,
 {
   pub fn new(unit: U) -> Self {
     Self {
-      server_status: SystemctlServerStatus::new(unit).into(),
+      server_status: ServerStatus::new(unit).into(),
     }
   }
 
   async fn server_status_guard(
     &self,
-  ) -> Result<MutexGuard<'_, SystemctlServerStatus<U>>, Box<dyn ThreadSafeError>> {
+  ) -> Result<MutexGuard<'_, ServerStatus<U>>, Box<dyn ThreadSafeError>> {
     let mut status_guard = self.server_status.lock().await;
     status_guard.maybe_update().await?;
     Ok(status_guard)
   }
-}
 
-#[async_trait]
-impl<U> ServerController for SystemctlServerController<U>
-where
-  U: Unit + Send + Sync,
-{
-  async fn server_state(&self) -> Result<ServerState, Box<dyn ThreadSafeError>> {
+  pub async fn server_state(&self) -> Result<ServerState, Box<dyn ThreadSafeError>> {
     Ok(self.server_status_guard().await?.state())
   }
 
-  async fn boot_server(&self) -> Result<(), Box<dyn ThreadSafeError>> {
+  pub async fn boot_server(&self) -> Result<(), Box<dyn ThreadSafeError>> {
     let boot_fut = {
       let mut guard = self.server_status_guard().await?;
       if guard.state != ServerState::Off {
@@ -129,7 +124,7 @@ where
         );
       }
       guard.begin_boot();
-      guard.unit().start()
+      guard.unit_mut().start()
     };
 
     let exit_status = boot_fut.await?;
@@ -142,7 +137,7 @@ where
     }
   }
 
-  async fn shutdown_server(&self) -> Result<(), Box<dyn ThreadSafeError>> {
+  pub async fn shutdown_server(&self) -> Result<(), Box<dyn ThreadSafeError>> {
     let shutdown_fut = {
       let mut guard = self.server_status_guard().await?;
       if guard.state != ServerState::On {
@@ -151,7 +146,7 @@ where
         );
       }
       guard.begin_shutdown();
-      guard.unit().stop()
+      guard.unit_mut().stop()
     };
 
     let exit_status = shutdown_fut.await?;

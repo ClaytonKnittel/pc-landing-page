@@ -8,34 +8,17 @@ use serde::Deserialize;
 use tokio::task::JoinHandle;
 
 use crate::{
-  controller::{
-    controller_interface::ServerController, sim_server_controller::SimServerController,
-    systemctl_server_controller::SystemctlServerController,
-  },
+  controller::ServerController,
   error::ThreadSafeError,
   proto::ServerState,
   security::{CERTFILE, KEYFILE},
-  systemctl::sys_unit::SysUnit,
+  systemctl::{sim_unit::SimUnit, sys_unit::SysUnit, unit::Unit},
 };
 
 const MC_SERVER_SERVICE: &str = "mc_server.service";
 
 struct Globals {
-  server_controller: Box<dyn ServerController + Send + Sync>,
-}
-
-impl Globals {
-  async fn new(sim: bool) -> Result<Self, Box<dyn ThreadSafeError>> {
-    let server_controller = if sim {
-      Box::new(SimServerController::new()) as Box<dyn ServerController + Send + Sync>
-    } else {
-      Box::new(SystemctlServerController::new(
-        SysUnit::from_systemctl(MC_SERVER_SERVICE).await?,
-      ))
-    };
-
-    Ok(Self { server_controller })
-  }
+  server_controller: ServerController<SimUnit>,
 }
 
 #[derive(AsyncSocketEmitters)]
@@ -116,7 +99,21 @@ pub async fn create_socket_endpoint(
     options
   };
 
-  let globals = Arc::new(Globals::new(sim).await?);
+  // let globals = Arc::new(Globals::new(sim).await?);
+  let globals = if sim {
+    Arc::new(Globals {
+      server_controller: ServerController::new(SimUnit::new(MC_SERVER_SERVICE.to_owned())),
+    })
+  } else {
+    todo!();
+    // Arc::<Globals<dyn Unit + Sized>>::new(Globals {
+    //   server_controller: ServerController::new(
+    //     SysUnit::from_systemctl(MC_SERVER_SERVICE)
+    //       .await
+    //       .map_err(|e| e.into())?,
+    //   ),
+    // })
+  };
 
   Ok(tokio::spawn(async move {
     println!(
