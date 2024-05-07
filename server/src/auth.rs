@@ -92,6 +92,8 @@ impl<'de> Deserialize<'de> for UserStore {
 
 #[cfg(test)]
 mod test {
+  use tokio_util::bytes::Buf;
+
   use super::UserStore;
 
   fn ser_de(store: &UserStore) -> UserStore {
@@ -187,5 +189,24 @@ mod test {
       .password
       .as_ref()
       .is_some_and(|password| password == "bad password")));
+  }
+
+  #[test]
+  fn test_adjacent_serializations() {
+    let mut store1 = UserStore::new();
+    store1
+      .add_user("joe".to_owned(), "bad password".to_owned())
+      .unwrap();
+    let mut store2 = UserStore::new();
+    store2.add_user("a".to_owned(), "a".to_owned()).unwrap();
+    store2.add_user("b".to_owned(), "b".to_owned()).unwrap();
+    let mut encoding = bincode::serialize(&store1).unwrap();
+    encoding.extend(bincode::serialize(&store2).unwrap());
+
+    let mut reader = encoding.reader();
+    let store1: UserStore = bincode::deserialize_from(&mut reader).unwrap();
+    let store2: UserStore = bincode::deserialize_from(&mut reader).unwrap();
+    assert_eq!(store1.num_users(), 1);
+    assert_eq!(store2.num_users(), 2);
   }
 }
