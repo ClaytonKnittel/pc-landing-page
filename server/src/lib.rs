@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod checkpoint_stream;
 pub mod controller;
 pub mod error;
 pub mod proto;
